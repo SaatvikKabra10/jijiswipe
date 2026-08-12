@@ -61,7 +61,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 3. **Accounts, migrations, private storage, and access-policy tests — authentication flow verified; policy tests remain**
 4. **Real upload-to-closet vertical slice — verified on iPhone**
 5. **Real outfit creation, local draft, saved outfits, templates, and Style Deck — verified on iPhone**
-6. Secure public sharing
+6. **Secure, revocable public sharing — link view verified on iPhone**
 7. Focused tests, deployment, and two-friend pilot
 
 ## Milestone 1 review gate
@@ -104,3 +104,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Real iPhone garment flow verified end to end: local cutout, automatic WebP/PNG sizing, owner-only storage and database save, persistent reload, and contrast-safe closet presentation.
 - 2026-08-12: Outfit creation direction expanded to two complementary modes: a centered silhouette editor for deliberate control and a gesture-driven style deck for playful discovery. Swipe actions must include visual feedback and visible buttons.
 - 2026-08-12: Real outfit saving, one-piece support, template selection, and the local swipeable Style Deck were verified on iPhone. Kept deck combinations return to the precise builder for editing and saving.
+- 2026-08-12: Token-hashed public outfit links and unauthenticated read-only outfit pages were verified on iPhone. Private images remain behind short-lived signed URLs; owners can revoke links.
