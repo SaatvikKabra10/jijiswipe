@@ -1,58 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PhotoLab } from "@/components/photo-lab";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
-type Category = "Tops" | "Bottoms" | "Outerwear" | "Shoes" | "Accessories";
-
-type ClosetItem = {
-  id: number;
-  name: string;
-  category: Category;
-  color: string;
-  shape: "tee" | "shirt" | "pants" | "jacket" | "shoe" | "bag";
-};
+type Slot = "top" | "bottom" | "one-piece" | "outerwear" | "shoes" | "accessory";
+type OutfitTemplate = "separates" | "one-piece" | "layered";
+type BuilderMode = "build" | "deck";
 
 type SavedClosetItem = {
   id: string;
   label: string;
-  category: "tops" | "bottoms" | "outerwear" | "shoes" | "accessories";
+  category: "tops" | "bottoms" | "one-pieces" | "outerwear" | "shoes" | "accessories";
   storage_path: string;
   imageUrl: string;
 };
+type SavedOutfit = { id: string; name: string; created_at: string; outfit_items: { clothing_item_id: string; slot: Slot }[] };
 
-const closet: ClosetItem[] = [
-  { id: 1, name: "Boxy blue tee", category: "Tops", color: "#2864f0", shape: "tee" },
-  { id: 2, name: "Ivory knit", category: "Tops", color: "#e9e2d4", shape: "shirt" },
-  { id: 3, name: "Washed black tee", category: "Tops", color: "#34363b", shape: "tee" },
-  { id: 4, name: "Wide-leg denim", category: "Bottoms", color: "#6384b3", shape: "pants" },
-  { id: 5, name: "Black trousers", category: "Bottoms", color: "#24262b", shape: "pants" },
-  { id: 6, name: "Cropped bomber", category: "Outerwear", color: "#7d846d", shape: "jacket" },
-  { id: 7, name: "Blue overshirt", category: "Outerwear", color: "#345ea8", shape: "jacket" },
-  { id: 8, name: "Retro runners", category: "Shoes", color: "#d8d1c5", shape: "shoe" },
-  { id: 9, name: "Black loafers", category: "Shoes", color: "#292a2e", shape: "shoe" },
-  { id: 10, name: "Silver shoulder bag", category: "Accessories", color: "#9fa4ad", shape: "bag" },
-];
+const categories = ["All", "Tops", "Bottoms", "One-pieces", "Outerwear", "Shoes", "Accessories"] as const;
 
-const categories = ["All", "Tops", "Bottoms", "Outerwear", "Shoes", "Accessories"] as const;
-
-const initialLook = {
-  top: closet[0],
-  bottom: closet[3],
-  outerwear: closet[5],
-  shoes: closet[7],
-  accessory: closet[9],
+const slotCategory: Record<Slot, SavedClosetItem["category"]> = {
+  top: "tops", bottom: "bottoms", "one-piece": "one-pieces", outerwear: "outerwear", shoes: "shoes", accessory: "accessories",
 };
-
-function Garment({ item, small = false }: { item: ClosetItem; small?: boolean }) {
-  return (
-    <div className={`garment garment-${item.shape} ${small ? "garment-small" : ""}`} style={{ "--garment": item.color } as React.CSSProperties}>
-      <span className="sr-only">{item.name}</span>
-    </div>
-  );
-}
+const slots = Object.keys(slotCategory) as Slot[];
 
 function Icon({ name }: { name: "closet" | "spark" | "looks" | "plus" | "user" | "arrow" | "heart" }) {
   const paths = {
@@ -70,11 +41,20 @@ function Icon({ name }: { name: "closet" | "spark" | "looks" | "plus" | "user" |
 export default function Home() {
   const [tab, setTab] = useState<Tab>("closet");
   const [filter, setFilter] = useState<(typeof categories)[number]>("All");
-  const [look, setLook] = useState(initialLook);
-  const [activeSlot, setActiveSlot] = useState<"top" | "bottom" | "outerwear" | "shoes" | "accessory">("top");
+  const [look, setLook] = useState<Partial<Record<Slot, string>>>({});
+  const [activeSlot, setActiveSlot] = useState<Slot>("top");
+  const [outfitTemplate, setOutfitTemplate] = useState<OutfitTemplate>("separates");
+  const [builderMode, setBuilderMode] = useState<BuilderMode>("build");
+  const [deckIndex, setDeckIndex] = useState(0);
+  const [dragX, setDragX] = useState(0);
+  const dragStart = useRef<number | undefined>(undefined);
   const [photoLabOpen, setPhotoLabOpen] = useState(false);
   const [savedItems, setSavedItems] = useState<SavedClosetItem[]>([]);
   const [closetMessage, setClosetMessage] = useState("");
+  const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
+  const [outfitName, setOutfitName] = useState("");
+  const [savingOutfit, setSavingOutfit] = useState(false);
+  const [outfitMessage, setOutfitMessage] = useState("");
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
@@ -87,18 +67,77 @@ export default function Home() {
     setSavedItems(withUrls); setClosetMessage("");
   }, []);
 
+  const loadSavedOutfits = useCallback(async () => {
+    const { data, error } = await createClient().from("outfits").select("id,name,created_at,outfit_items(clothing_item_id,slot)").order("created_at", { ascending: false });
+    if (error) { setOutfitMessage("Your saved looks could not be loaded."); return; }
+    setSavedOutfits((data ?? []) as SavedOutfit[]); setOutfitMessage("");
+  }, []);
+
   useEffect(() => {
     // Loading the authenticated user's remote closet is an intentional external-system sync.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadSavedItems();
-  }, [loadSavedItems]);
+    void loadSavedOutfits();
+  }, [loadSavedItems, loadSavedOutfits]);
 
-  const filtered = filter === "All" ? closet : closet.filter((item) => item.category === filter);
   const savedFiltered = filter === "All" ? savedItems : savedItems.filter((item) => item.category === filter.toLowerCase());
-  const slotCategory: Record<typeof activeSlot, Category> = {
-    top: "Tops", bottom: "Bottoms", outerwear: "Outerwear", shoes: "Shoes", accessory: "Accessories",
-  };
-  const choices = closet.filter((item) => item.category === slotCategory[activeSlot]);
+  const choices = savedItems.filter((item) => item.category === slotCategory[activeSlot]);
+  const chosenItems = slots.flatMap((slot) => {
+    const item = savedItems.find((candidate) => candidate.id === look[slot]);
+    return item ? [{ slot, item }] : [];
+  });
+  const deckLook = useMemo(() => {
+    const byCategory = (category: SavedClosetItem["category"]) => savedItems.filter((item) => item.category === category);
+    const pick = (category: SavedClosetItem["category"], offset = 0) => {
+      const options = byCategory(category);
+      return options.length ? options[(deckIndex + offset) % options.length] : undefined;
+    };
+    const onePieces = byCategory("one-pieces");
+    const useOnePiece = onePieces.length > 0 && deckIndex % 3 === 2;
+    const suggestion: Partial<Record<Slot, SavedClosetItem>> = useOnePiece
+      ? { "one-piece": onePieces[deckIndex % onePieces.length] }
+      : { top: pick("tops"), bottom: pick("bottoms", 1) };
+    if (deckIndex % 2 === 0) suggestion.outerwear = pick("outerwear", 2);
+    suggestion.shoes = pick("shoes", 3);
+    if (deckIndex % 3 === 0) suggestion.accessory = pick("accessories", 4);
+    return suggestion;
+  }, [deckIndex, savedItems]);
+  const deckItems = Object.entries(deckLook).filter((entry): entry is [Slot, SavedClosetItem] => Boolean(entry[1]));
+
+  function nextDeck() { setDeckIndex((index) => index + 1); setDragX(0); }
+  function keepDeck() {
+    setLook(Object.fromEntries(deckItems.map(([slot, item]) => [slot, item.id])));
+    setOutfitTemplate(deckLook["one-piece"] ? "one-piece" : deckLook.outerwear ? "layered" : "separates");
+    setActiveSlot(deckLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setDragX(0);
+  }
+  function finishDeckSwipe() {
+    if (dragX > 70) keepDeck(); else if (dragX < -70) nextDeck(); else setDragX(0);
+    dragStart.current = undefined;
+  }
+
+  function chooseTemplate(template: OutfitTemplate) {
+    setOutfitTemplate(template);
+    if (template === "one-piece") { setLook((current) => ({ "one-piece": current["one-piece"], outerwear: current.outerwear, shoes: current.shoes, accessory: current.accessory })); setActiveSlot("one-piece"); }
+    else { setLook((current) => ({ top: current.top, bottom: current.bottom, outerwear: current.outerwear, shoes: current.shoes, accessory: current.accessory })); setActiveSlot("top"); }
+  }
+
+  async function saveOutfit() {
+    if (chosenItems.length < 2 || !outfitName.trim()) { setOutfitMessage("Name your look before saving."); return; }
+    setSavingOutfit(true); setOutfitMessage("");
+    const supabase = createClient();
+    let outfitId = "";
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Your session expired. Sign in again and retry.");
+      const { data: outfit, error: outfitError } = await supabase.from("outfits").insert({ owner_id: session.user.id, name: outfitName.trim() }).select("id").single();
+      if (outfitError) throw outfitError;
+      outfitId = outfit.id;
+      const { error: itemsError } = await supabase.from("outfit_items").insert(chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot })));
+      if (itemsError) { await supabase.from("outfits").delete().eq("id", outfitId); throw itemsError; }
+      setLook({}); setOutfitName(""); await loadSavedOutfits(); setTab("outfits");
+    } catch (error) { setOutfitMessage(error instanceof Error ? error.message : "This look could not be saved."); }
+    finally { setSavingOutfit(false); }
+  }
 
   return (
     <main className="app-shell">
@@ -114,22 +153,17 @@ export default function Home() {
               <div><p className="eyebrow">Your wardrobe</p><h1 id="closet-title">The closet</h1></div>
               <button className="add-button" onClick={() => setPhotoLabOpen(true)}><Icon name="plus" /> Add item</button>
             </div>
-            <div className="stats"><span><strong>{closet.length + savedItems.length}</strong> pieces</span><span><strong>3</strong> saved looks</span></div>
+            <div className="stats"><span><strong>{savedItems.length}</strong> pieces</span><span><strong>{savedOutfits.length}</strong> saved looks</span></div>
             <div className="filter-row" aria-label="Filter closet">
               {categories.map((category) => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}
             </div>
             {closetMessage && <p className="form-error closet-message" role="alert">{closetMessage}</p>}
+            {!closetMessage && savedFiltered.length === 0 && <div className="closet-empty"><p className="eyebrow">Nothing here yet</p><h2>{filter === "All" ? "Add your first piece." : `No ${filter.toLowerCase()} saved.`}</h2><p>Photograph one item and JijiSwipe will cut it out privately on your phone.</p><button className="primary-button" onClick={() => setPhotoLabOpen(true)}>Add a piece</button></div>}
             <div className="closet-grid">
               {savedFiltered.map((item) => (
                 <button className="item-card" key={item.id}>
                   <div className="item-image saved-item-image"><img src={item.imageUrl} alt="" /></div>
                   <span>{item.label}</span><small>{item.category[0].toUpperCase() + item.category.slice(1)}</small>
-                </button>
-              ))}
-              {filtered.map((item) => (
-                <button className="item-card" key={item.id}>
-                  <div className="item-image"><Garment item={item} /></div>
-                  <span>{item.name}</span><small>{item.category}</small>
                 </button>
               ))}
             </div>
@@ -138,41 +172,61 @@ export default function Home() {
 
         {tab === "create" && (
           <section aria-labelledby="create-title">
-            <div className="create-heading"><div><p className="eyebrow">Build a look</p><h1 id="create-title">Swipe to style</h1></div><button className="text-button">Start over</button></div>
+            <div className="create-heading"><div><p className="eyebrow">Build a look</p><h1 id="create-title">Swipe to style</h1></div>{builderMode === "build" && <button className="text-button" onClick={() => setLook({})}>Start over</button>}</div>
+            <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>
+            {builderMode === "build" && <><div className="template-switcher" aria-label="Outfit template">
+              {(["separates", "one-piece", "layered"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : template === "one-piece" ? "Dress / one-piece" : "Layered"}</button>)}
+            </div>
             <div className="look-stage">
-              <div className="look-number">LOOK 001</div>
-              <div className="outfit-canvas">
-                <button className={`look-piece outerwear ${activeSlot === "outerwear" ? "selected" : ""}`} onClick={() => setActiveSlot("outerwear")}><Garment item={look.outerwear} small /></button>
-                <button className={`look-piece top ${activeSlot === "top" ? "selected" : ""}`} onClick={() => setActiveSlot("top")}><Garment item={look.top} small /></button>
-                <button className={`look-piece bottom ${activeSlot === "bottom" ? "selected" : ""}`} onClick={() => setActiveSlot("bottom")}><Garment item={look.bottom} small /></button>
-                <button className={`look-piece shoes ${activeSlot === "shoes" ? "selected" : ""}`} onClick={() => setActiveSlot("shoes")}><Garment item={look.shoes} small /></button>
-                <button className={`look-piece accessory ${activeSlot === "accessory" ? "selected" : ""}`} onClick={() => setActiveSlot("accessory")}><Garment item={look.accessory} small /></button>
+              <div className="look-number">DRAFT · {chosenItems.length} PIECES</div>
+              <div className={`outfit-canvas template-${outfitTemplate}`}>
+                {slots.filter((slot) => outfitTemplate === "one-piece" ? !["top", "bottom"].includes(slot) : slot !== "one-piece").map((slot) => {
+                  const item = savedItems.find((candidate) => candidate.id === look[slot]);
+                  return <button key={slot} className={`look-piece ${slot} ${activeSlot === slot ? "selected" : ""} ${item ? "filled" : "empty"}`} onClick={() => setActiveSlot(slot)} aria-label={`Choose ${slot}`}>
+                    {item ? <img src={item.imageUrl} alt={item.label} /> : <><b>+</b><span>{slot}</span></>}
+                  </button>;
+                })}
               </div>
             </div>
             <div className="builder-panel">
               <div className="panel-heading"><div><p className="eyebrow">Choose your</p><h2>{activeSlot}</h2></div><span>Swipe</span></div>
               <div className="choice-rail">
                 {choices.map((item) => (
-                  <button key={item.id} className={look[activeSlot].id === item.id ? "choice-card active" : "choice-card"} onClick={() => setLook({ ...look, [activeSlot]: item })}>
-                    <Garment item={item} /><span>{item.name}</span>
+                  <button key={item.id} className={look[activeSlot] === item.id ? "choice-card active" : "choice-card"} onClick={() => setLook((current) => activeSlot === "one-piece" ? { ...current, top: undefined, bottom: undefined, "one-piece": item.id } : activeSlot === "top" || activeSlot === "bottom" ? { ...current, "one-piece": undefined, [activeSlot]: item.id } : { ...current, [activeSlot]: item.id })}>
+                    <img src={item.imageUrl} alt="" /><span>{item.label}</span>
                   </button>
                 ))}
+                {choices.length === 0 && <div className="choice-empty"><strong>No {slotCategory[activeSlot]} yet.</strong><span>Add one from your closet first.</span><button onClick={() => { setTab("closet"); setPhotoLabOpen(true); }}>Add piece</button></div>}
               </div>
-              <button className="primary-button">Save this look <Icon name="arrow" /></button>
+              {chosenItems.length >= 2 && <label className="outfit-name">Look name<input value={outfitName} maxLength={60} onChange={(event) => setOutfitName(event.target.value)} placeholder="Tuesday layers" /></label>}
+              {outfitMessage && <p className="form-error" role="alert">{outfitMessage}</p>}
+              <button className="primary-button" disabled={chosenItems.length < 2 || savingOutfit} onClick={saveOutfit}>{savingOutfit ? "Saving privately…" : chosenItems.length < 2 ? `Choose ${2 - chosenItems.length} more piece${chosenItems.length === 0 ? "s" : ""}` : "Save this look"} <Icon name="arrow" /></button>
             </div>
+            </>}
+            {builderMode === "deck" && <div className="style-deck">
+              {deckItems.length >= 2 ? <><div className="deck-counter">REMIX {String(deckIndex + 1).padStart(2, "0")}</div><div className="deck-stack"><div className="deck-card behind"/><div className="deck-card" style={{ transform: `translateX(${dragX}px) rotate(${dragX / 24}deg)` }} onPointerDown={(event) => { dragStart.current = event.clientX; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={(event) => { if (dragStart.current !== undefined) setDragX(event.clientX - dragStart.current); }} onPointerUp={finishDeckSwipe} onPointerCancel={() => { dragStart.current = undefined; setDragX(0); }}>
+                <span className={`deck-stamp keep ${dragX > 30 ? "show" : ""}`}>KEEP</span><span className={`deck-stamp skip ${dragX < -30 ? "show" : ""}`}>SKIP</span>
+                {deckItems.map(([slot, item]) => <div className={`deck-piece ${slot}`} key={slot}><img src={item.imageUrl} alt={item.label}/><small>{item.label}</small></div>)}
+              </div></div><p className="deck-hint">Swipe right to keep · left to skip</p><div className="deck-actions"><button onClick={() => setDeckIndex((index) => Math.max(0, index - 1))}>↶<span>Undo</span></button><button className="skip" onClick={nextDeck}>×<span>Skip</span></button><button className="keep" onClick={keepDeck}>♥<span>Keep</span></button><button onClick={nextDeck}>⤨<span>Shuffle</span></button></div></> : <div className="closet-empty deck-empty"><p className="eyebrow">Deck needs variety</p><h2>Add a wearable pair.</h2><p>Save a top and bottom, or a one-piece plus shoes or an accessory, to start remixing.</p><button className="primary-button" onClick={() => { setTab("closet"); setPhotoLabOpen(true); }}>Add a piece</button></div>}
+            </div>}
           </section>
         )}
 
         {tab === "outfits" && (
           <section aria-labelledby="outfits-title">
-            <div className="hero-row"><div><p className="eyebrow">Your combinations</p><h1 id="outfits-title">Saved looks</h1></div><span className="count-badge">03</span></div>
+            <div className="hero-row"><div><p className="eyebrow">Your combinations</p><h1 id="outfits-title">Saved looks</h1></div><span className="count-badge">{String(savedOutfits.length).padStart(2, "0")}</span></div>
+            {outfitMessage && <p className="form-error closet-message" role="alert">{outfitMessage}</p>}
+            {!outfitMessage && savedOutfits.length === 0 && <div className="closet-empty outfits-empty"><p className="eyebrow">No looks yet</p><h2>Build your first outfit.</h2><p>Choose two or more pieces you already own and save the combination here.</p><button className="primary-button" onClick={() => setTab("create")}>Create a look</button></div>}
             <div className="looks-list">
-              {["Tuesday layers", "Blue hour", "Easy weekend"].map((name, index) => (
-                <button className="saved-look" key={name}>
-                  <div className={`saved-preview preview-${index + 1}`}>
-                    <Garment item={closet[index]} small /><Garment item={closet[index + 3]} small /><Garment item={closet[index + 7]} small />
+              {savedOutfits.map((outfit) => (
+                <button className="saved-look" key={outfit.id}>
+                  <div className="saved-preview real-preview">
+                    {outfit.outfit_items.map(({ clothing_item_id }) => {
+                      const item = savedItems.find((candidate) => candidate.id === clothing_item_id);
+                      return item ? <img key={clothing_item_id} src={item.imageUrl} alt="" /> : null;
+                    })}
                   </div>
-                  <div className="saved-copy"><small>0{index + 1} / AUG</small><h2>{name}</h2><p>{index === 0 ? "5 pieces" : "3 pieces"}</p></div>
+                  <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.outfit_items.length} pieces</p></div>
                   <Icon name="arrow" />
                 </button>
               ))}

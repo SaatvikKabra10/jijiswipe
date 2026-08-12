@@ -10,7 +10,7 @@ type Stage = "guide" | "crop" | "processing" | "result" | "error";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const accepted = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const categories = ["tops", "bottoms", "outerwear", "shoes", "accessories"] as const;
+const categories = ["tops", "bottoms", "one-pieces", "outerwear", "shoes", "accessories"] as const;
 
 function randomId() {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();

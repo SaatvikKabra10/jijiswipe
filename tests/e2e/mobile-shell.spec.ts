@@ -6,11 +6,13 @@ test("mobile closet navigation and photo entry remain usable", async ({ page }) 
 
   await expect(page.getByRole("heading", { name: "The closet" })).toBeVisible();
   await page.getByRole("button", { name: "Tops", exact: true }).click();
-  await expect(page.getByRole("button", { name: /Boxy blue tee/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Wide-leg denim/ })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "No tops saved." })).toBeVisible();
 
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByRole("heading", { name: "Swipe to style" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Top + bottom" })).toBeVisible();
+  await page.getByRole("button", { name: "Style Deck" }).click();
+  await expect(page.getByRole("heading", { name: "Add a wearable pair." })).toBeVisible();
   await page.getByRole("button", { name: "Outfits" }).click();
   await expect(page.getByRole("heading", { name: "Saved looks" })).toBeVisible();
 
