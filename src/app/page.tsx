@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PhotoLab } from "@/components/photo-lab";
+import { ItemDetailSheet } from "@/components/item-detail-sheet";
+import { ProfileSheet } from "@/components/profile-sheet";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
@@ -58,6 +60,9 @@ export default function Home() {
   const [shareMessage, setShareMessage] = useState("");
   const [shareUrl, setShareUrl] = useState("");
   const [sharingId, setSharingId] = useState("");
+  const [selectedItem, setSelectedItem] = useState<SavedClosetItem>();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState("");
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
@@ -76,12 +81,23 @@ export default function Home() {
     setSavedOutfits((data ?? []) as SavedOutfit[]); setOutfitMessage("");
   }, []);
 
+  const loadAvatar = useCallback(async () => {
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data } = await supabase.from("profiles").select("avatar_path").eq("id", user.id).maybeSingle();
+    if (!data?.avatar_path) { setAvatarUrl(""); return; }
+    const signed = await supabase.storage.from("avatars").createSignedUrl(data.avatar_path, 3600);
+    setAvatarUrl(signed.data?.signedUrl ?? "");
+  }, []);
+
   useEffect(() => {
     // Loading the authenticated user's remote closet is an intentional external-system sync.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadSavedItems();
     void loadSavedOutfits();
-  }, [loadSavedItems, loadSavedOutfits]);
+    void loadAvatar();
+  }, [loadAvatar, loadSavedItems, loadSavedOutfits]);
 
   const savedFiltered = filter === "All" ? savedItems : savedItems.filter((item) => item.category === filter.toLowerCase());
   const choices = savedItems.filter((item) => item.category === slotCategory[activeSlot]);
@@ -169,7 +185,7 @@ export default function Home() {
     <main className="app-shell">
       <header className="topbar">
         <button className="wordmark" onClick={() => setTab("closet")} aria-label="JijiSwipe home">jiji<span>swipe</span></button>
-        <button className="profile-button" aria-label="Open profile"><Icon name="user" /></button>
+        <button className="profile-button" onClick={() => setProfileOpen(true)} aria-label="Open profile">{avatarUrl ? <img src={avatarUrl} alt=""/> : <Icon name="user" />}</button>
       </header>
 
       <div className="screen">
@@ -187,7 +203,7 @@ export default function Home() {
             {!closetMessage && savedFiltered.length === 0 && <div className="closet-empty"><p className="eyebrow">Nothing here yet</p><h2>{filter === "All" ? "Add your first piece." : `No ${filter.toLowerCase()} saved.`}</h2><p>Photograph one item and JijiSwipe will cut it out privately on your phone.</p><button className="primary-button" onClick={() => setPhotoLabOpen(true)}>Add a piece</button></div>}
             <div className="closet-grid">
               {savedFiltered.map((item) => (
-                <button className="item-card" key={item.id}>
+                <button className="item-card" key={item.id} onClick={() => setSelectedItem(item)}>
                   <div className="item-image saved-item-image"><img src={item.imageUrl} alt="" /></div>
                   <span>{item.label}</span><small>{item.category[0].toUpperCase() + item.category.slice(1)}</small>
                 </button>
@@ -269,6 +285,8 @@ export default function Home() {
         <button className={tab === "outfits" ? "active" : ""} onClick={() => setTab("outfits")}><span className="nav-icon"><Icon name="looks" /></span><span>Outfits</span></button>
       </nav>
       <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} onSaved={loadSavedItems} />
+      {selectedItem && <ItemDetailSheet item={selectedItem} onClose={() => setSelectedItem(undefined)} onChanged={async () => { await loadSavedItems(); await loadSavedOutfits(); }} />}
+      <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} onAvatar={setAvatarUrl} />
     </main>
   );
 }
