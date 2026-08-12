@@ -1,8 +1,12 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# JijiSwipe
+
+JijiSwipe is a mobile-first digital closet for building outfits from clothing you already own. This repository currently contains the Milestone 1 fake-data interaction prototype.
+
+Read the living [product plan](docs/PRODUCT_PLAN.md) for decisions, scope, milestones, and review gates.
 
 ## Getting Started
 
-First, run the development server:
+Use Node 20.19 or newer, then run the development server:
 
 ```bash
 npm run dev

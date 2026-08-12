@@ -1,17 +1,22 @@
 {
-  "name": "outfit-app",
+  "name": "jijiswipe",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run lint && npm run typecheck && npm run build"
   },
   "dependencies": {
+    "@imgly/background-removal": "^1.7.0",
+    "heic-to": "^1.5.2",
     "next": "16.3.0",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "react-easy-crop": "^6.2.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
