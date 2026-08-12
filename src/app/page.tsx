@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PhotoLab } from "@/components/photo-lab";
+import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
 type Category = "Tops" | "Bottoms" | "Outerwear" | "Shoes" | "Accessories";
@@ -12,6 +13,14 @@ type ClosetItem = {
   category: Category;
   color: string;
   shape: "tee" | "shirt" | "pants" | "jacket" | "shoe" | "bag";
+};
+
+type SavedClosetItem = {
+  id: string;
+  label: string;
+  category: "tops" | "bottoms" | "outerwear" | "shoes" | "accessories";
+  storage_path: string;
+  imageUrl: string;
 };
 
 const closet: ClosetItem[] = [
@@ -64,8 +73,28 @@ export default function Home() {
   const [look, setLook] = useState(initialLook);
   const [activeSlot, setActiveSlot] = useState<"top" | "bottom" | "outerwear" | "shoes" | "accessory">("top");
   const [photoLabOpen, setPhotoLabOpen] = useState(false);
+  const [savedItems, setSavedItems] = useState<SavedClosetItem[]>([]);
+  const [closetMessage, setClosetMessage] = useState("");
+
+  const loadSavedItems = useCallback(async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path").order("created_at", { ascending: false });
+    if (error) { setClosetMessage("Your saved pieces could not be loaded."); return; }
+    const withUrls = await Promise.all((data ?? []).map(async (item) => {
+      const { data: signed } = await supabase.storage.from("clothing").createSignedUrl(item.storage_path, 3600);
+      return { ...item, imageUrl: signed?.signedUrl ?? "" } as SavedClosetItem;
+    }));
+    setSavedItems(withUrls); setClosetMessage("");
+  }, []);
+
+  useEffect(() => {
+    // Loading the authenticated user's remote closet is an intentional external-system sync.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadSavedItems();
+  }, [loadSavedItems]);
 
   const filtered = filter === "All" ? closet : closet.filter((item) => item.category === filter);
+  const savedFiltered = filter === "All" ? savedItems : savedItems.filter((item) => item.category === filter.toLowerCase());
   const slotCategory: Record<typeof activeSlot, Category> = {
     top: "Tops", bottom: "Bottoms", outerwear: "Outerwear", shoes: "Shoes", accessory: "Accessories",
   };
@@ -85,11 +114,18 @@ export default function Home() {
               <div><p className="eyebrow">Your wardrobe</p><h1 id="closet-title">The closet</h1></div>
               <button className="add-button" onClick={() => setPhotoLabOpen(true)}><Icon name="plus" /> Add item</button>
             </div>
-            <div className="stats"><span><strong>10</strong> pieces</span><span><strong>3</strong> saved looks</span></div>
+            <div className="stats"><span><strong>{closet.length + savedItems.length}</strong> pieces</span><span><strong>3</strong> saved looks</span></div>
             <div className="filter-row" aria-label="Filter closet">
               {categories.map((category) => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}
             </div>
+            {closetMessage && <p className="form-error closet-message" role="alert">{closetMessage}</p>}
             <div className="closet-grid">
+              {savedFiltered.map((item) => (
+                <button className="item-card" key={item.id}>
+                  <div className="item-image saved-item-image"><img src={item.imageUrl} alt="" /></div>
+                  <span>{item.label}</span><small>{item.category[0].toUpperCase() + item.category.slice(1)}</small>
+                </button>
+              ))}
               {filtered.map((item) => (
                 <button className="item-card" key={item.id}>
                   <div className="item-image"><Garment item={item} /></div>
@@ -150,7 +186,7 @@ export default function Home() {
         <button className={tab === "create" ? "active" : ""} onClick={() => setTab("create")}><span className="nav-icon"><Icon name="spark" /></span><span>Create</span></button>
         <button className={tab === "outfits" ? "active" : ""} onClick={() => setTab("outfits")}><span className="nav-icon"><Icon name="looks" /></span><span>Outfits</span></button>
       </nav>
-      <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} />
+      <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} onSaved={loadSavedItems} />
     </main>
   );
 }

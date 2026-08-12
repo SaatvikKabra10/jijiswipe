@@ -59,7 +59,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 1. **Foundation and fake-data visual prototype — approved**
 2. **Local image-processing proof using ten varied garments — implemented; awaiting iPhone benchmark**
 3. **Accounts, migrations, private storage, and access-policy tests — authentication flow verified; policy tests remain**
-4. Real upload-to-closet vertical slice
+4. **Real upload-to-closet vertical slice — verified on iPhone**
 5. Real outfit creation, local draft, and saved outfits
 6. Secure public sharing
 7. Focused tests, deployment, and two-friend pilot
@@ -78,7 +78,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 
 - Normal operating-cost target: $0; no metered AI or image API in Gate A
 - Up to five accounts and 250 clothing records per account
-- Final cutout: transparent WebP, at most 1600 px and 600 KB
+- Final cutout: transparent WebP where supported, transparent PNG fallback on Safari, at most 1600 px and 600 KB
 - Primary target: iPhone Safari; Android Chrome is secondary
 - Monthly manual database/image backup and service-health check
 
@@ -101,3 +101,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Added `DESIGN.md` and Playwright/axe mobile checks. This macOS receives a frozen incompatible Playwright WebKit build, so automated touch/layout checks use current Chromium while real-iPhone Safari remains a milestone gate.
 - 2026-08-12: Mobile interaction and axe checks pass after fixing local hydration origins and accessible text contrast. Added project-scoped Supabase CLI and GitHub Actions quality workflow.
 - 2026-08-12: Hosted Supabase migration applied. Gmail SMTP, invite-only join, token-hash confirmation, password creation, and returning-user sign-in were verified end to end.
+- 2026-08-12: Real iPhone garment flow verified end to end: local cutout, automatic WebP/PNG sizing, owner-only storage and database save, persistent reload, and contrast-safe closet presentation.
