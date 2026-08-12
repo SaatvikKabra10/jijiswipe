@@ -8,6 +8,13 @@ on:
 permissions:
   contents: read
 
+env:
+  NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci_placeholder_only
+  NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+  SUPABASE_SECRET_KEY: sb_secret_ci_placeholder_only
+  JIJISWIPE_INVITE_CODE: ci-placeholder-invite-code
+
 jobs:
   static:
     name: Lint, types, and build
