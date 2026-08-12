@@ -55,6 +55,9 @@ export default function Home() {
   const [outfitName, setOutfitName] = useState("");
   const [savingOutfit, setSavingOutfit] = useState(false);
   const [outfitMessage, setOutfitMessage] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [shareUrl, setShareUrl] = useState("");
+  const [sharingId, setSharingId] = useState("");
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
@@ -139,6 +142,29 @@ export default function Home() {
     finally { setSavingOutfit(false); }
   }
 
+  async function shareOutfit(outfit: SavedOutfit) {
+    setSharingId(outfit.id); setShareMessage(""); setShareUrl("");
+    try {
+      const response = await fetch(`/api/outfits/${outfit.id}/share`, { method: "POST" });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Could not create the link.");
+      if (typeof navigator.share === "function") await navigator.share({ title: outfit.name, text: `Check out my ${outfit.name} look on JijiSwipe`, url: result.url });
+      else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(result.url); setShareMessage("Share link copied."); }
+      else { setShareUrl(result.url); setShareMessage("Press and hold the link to copy it."); }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return;
+      setShareMessage(error instanceof Error ? error.message : "Could not share this look.");
+    } finally { setSharingId(""); }
+  }
+
+  async function revokeShare(outfitId: string) {
+    setSharingId(outfitId); setShareMessage(""); setShareUrl("");
+    const response = await fetch(`/api/outfits/${outfitId}/share`, { method: "DELETE" });
+    const result = await response.json();
+    setShareMessage(response.ok ? "Public link revoked." : result.error || "Could not revoke the link.");
+    setSharingId("");
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -216,10 +242,12 @@ export default function Home() {
           <section aria-labelledby="outfits-title">
             <div className="hero-row"><div><p className="eyebrow">Your combinations</p><h1 id="outfits-title">Saved looks</h1></div><span className="count-badge">{String(savedOutfits.length).padStart(2, "0")}</span></div>
             {outfitMessage && <p className="form-error closet-message" role="alert">{outfitMessage}</p>}
+            {shareMessage && <p className="form-success closet-message" role="status">{shareMessage}</p>}
+            {shareUrl && <div className="share-fallback"><input aria-label="Public outfit link" readOnly value={shareUrl} onFocus={(event) => event.currentTarget.select()} /><a href={shareUrl} target="_blank" rel="noreferrer">Open link</a></div>}
             {!outfitMessage && savedOutfits.length === 0 && <div className="closet-empty outfits-empty"><p className="eyebrow">No looks yet</p><h2>Build your first outfit.</h2><p>Choose two or more pieces you already own and save the combination here.</p><button className="primary-button" onClick={() => setTab("create")}>Create a look</button></div>}
             <div className="looks-list">
               {savedOutfits.map((outfit) => (
-                <button className="saved-look" key={outfit.id}>
+                <article className="saved-look" key={outfit.id}>
                   <div className="saved-preview real-preview">
                     {outfit.outfit_items.map(({ clothing_item_id }) => {
                       const item = savedItems.find((candidate) => candidate.id === clothing_item_id);
@@ -227,8 +255,8 @@ export default function Home() {
                     })}
                   </div>
                   <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.outfit_items.length} pieces</p></div>
-                  <Icon name="arrow" />
-                </button>
+                  <div className="look-actions"><button disabled={sharingId === outfit.id} onClick={() => shareOutfit(outfit)}>{sharingId === outfit.id ? "…" : "Share"}</button><button disabled={sharingId === outfit.id} onClick={() => revokeShare(outfit.id)}>Revoke</button></div>
+                </article>
               ))}
             </div>
           </section>
