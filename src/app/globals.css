@@ -64,8 +64,8 @@ h1 { margin-bottom:0; font-size:38px; line-height:.98; letter-spacing:-2.2px; fo
 .look-piece.empty { border:1px dashed #6c6a65; color:#55534f; background:#ffffff30; align-content:center; gap:2px; }
 .look-piece.empty b { font-size:22px; line-height:1; }.look-piece.empty span { font-size:8px; font-weight:800; letter-spacing:.6px; text-transform:uppercase; }
 .look-piece.outerwear { right:4px; top:8px; width:118px; height:120px; transform:rotate(2deg); z-index:2; }
-.look-piece.top { left:5px; top:58px; width:118px; height:112px; transform:rotate(-2deg); z-index:2; }
-.look-piece.bottom { left:10px; bottom:2px; width:126px; height:132px; transform:rotate(2deg); z-index:2; }
+.look-piece.top { left:5px; top:35px; width:118px; height:112px; transform:rotate(-2deg); z-index:2; }
+.look-piece.bottom { left:10px; bottom:22px; width:126px; height:132px; transform:rotate(2deg); z-index:2; }
 .look-piece.one-piece { left:12px; top:36px; width:142px; height:228px; transform:rotate(-2deg); z-index:2; }
 .look-piece.shoes { right:6px; bottom:5px; width:116px; height:76px; transform:rotate(3deg); z-index:2; }
 .look-piece.accessory { right:8px; top:137px; width:86px; height:82px; transform:rotate(4deg); z-index:3; }
