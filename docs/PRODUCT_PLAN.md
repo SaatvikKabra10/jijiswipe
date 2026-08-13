@@ -19,7 +19,7 @@ Target: 27–40 focused development hours and two pilot users.
 - Fixed layered outfit renderer and swipeable item selection
 - One local outfit draft, saved outfit editing, and private notes
 - Revocable public links showing only display name, outfit name, and images
-- Installable web-app shell; internet required
+- Installable web-app shell; versioned UI assets cache for faster repeat launches, while private closet data still requires internet and always refreshes securely
 
 Gate A is complete only when a pilot friend can independently join, install the app, add a real garment, manage their closet, build/save/edit an outfit, share and revoke a public link, and return later with data intact.
 
@@ -157,3 +157,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Builder direction updated from a static collage to an optional neutral/masculine/feminine presentation avatar with independently swipeable garment lanes. Gender is user-selected presentation context and is never inferred.
 - 2026-08-12: Batch import direction set to a durable 20-photo on-device queue that resumes after interruption. Truly unattended server processing is deferred behind an explicit privacy and operating-cost review.
 - 2026-08-12: Automatic AI categorization was verified locally on a real post-cutout garment. Structured suggestions populate the review form; the original photo, API key, prompts, and images are not stored in usage metering.
+- 2026-08-12: Added privacy-safe PWA shell caching. Repeat launches reuse versioned JijiSwipe code and public icons while authentication, private data, API responses, and signed clothing images stay outside the service-worker cache.
