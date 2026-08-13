@@ -1,7 +1,7 @@
 # JijiSwipe Product Plan
 
 Last updated: August 12, 2026
-Status: Milestones 1–2 approved; Milestone 3 authentication and hosted security foundation complete
+Status: Core product loop complete; two-friend pilot readiness in progress
 
 ## Product goal
 
@@ -62,7 +62,8 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 4. **Real upload-to-closet vertical slice — verified on iPhone**
 5. **Real outfit creation, local draft, saved outfits, templates, and Style Deck — verified on iPhone**
 6. **Secure, revocable public sharing — link view verified on iPhone**
-7. Focused tests, deployment, and two-friend pilot
+7. **Focused tests and deployment — production deployment and core mobile checks complete**
+8. Two-friend pilot — onboarding checklist prepared; awaiting real-user sessions
 
 ## Milestone 1 review gate
 
@@ -105,3 +106,5 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Outfit creation direction expanded to two complementary modes: a centered silhouette editor for deliberate control and a gesture-driven style deck for playful discovery. Swipe actions must include visual feedback and visible buttons.
 - 2026-08-12: Real outfit saving, one-piece support, template selection, and the local swipeable Style Deck were verified on iPhone. Kept deck combinations return to the precise builder for editing and saving.
 - 2026-08-12: Token-hashed public outfit links and unauthenticated read-only outfit pages were verified on iPhone. Private images remain behind short-lived signed URLs; owners can revoke links.
+- 2026-08-12: Closet-item editing/deletion, profile photos, profile editing, and reliable sign-out shipped to production.
+- 2026-08-12: Added in-app iPhone installation guidance and a standalone-app manifest check for the two-friend pilot.

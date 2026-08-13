@@ -14,3 +14,17 @@ test("mobile shell has no serious automated accessibility violations", async ({ 
   const serious = results.violations.filter(({ impact }) => impact === "serious" || impact === "critical");
   expect(serious).toEqual([]);
 });
+
+test("install manifest describes a standalone portrait app", async ({ request }) => {
+  const response = await request.get("/manifest.webmanifest");
+  expect(response.ok()).toBeTruthy();
+
+  const manifest = await response.json();
+  expect(manifest).toMatchObject({
+    name: "JijiSwipe",
+    start_url: "/",
+    display: "standalone",
+    orientation: "portrait",
+  });
+  expect(manifest.icons).toContainEqual(expect.objectContaining({ src: "/icon.svg" }));
+});

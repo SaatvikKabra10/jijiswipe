@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: "Build better outfits from the clothes you already own.",
   applicationName: "JijiSwipe",
   appleWebApp: { capable: true, title: "JijiSwipe", statusBarStyle: "black-translucent" },
-  icons: { icon: "/icon.svg", apple: "/icon.svg" },
+  icons: { icon: "/icon.svg", apple: "/apple-touch-icon.png" },
   formatDetection: { telephone: false },
 };
 
