@@ -44,6 +44,26 @@ Implementation details and Pinterest constraints are maintained in [AI_RECOMMEND
 5. Add weather and carefully sourced trend context as optional inputs, never as reasons to recommend clothes the user does not own.
 6. Personalize ranking only after each user has enough real feedback; start with a simple scoring model before custom machine learning.
 
+## Build experience redesign
+
+The long-term builder should feel like dressing a person, not arranging disconnected product cards.
+
+- Add an optional presentation preference: neutral, masculine, or feminine. Never infer gender from photos, garments, or account identity; users can change it anytime.
+- Render an original JijiSwipe mannequin/avatar as a subtle visual anchor rather than copying Depop or pretending to simulate exact body fit.
+- Give top, bottom/one-piece, outerwear, shoes, and accessory their own independently swipeable lane. Swiping one lane changes only that slot and keeps the rest of the look stable.
+- Keep tap-to-browse and visible previous/next controls for accessibility and precise selection.
+- Auto-trim transparent cutouts and normalize per-category anchor boxes so tops meet waistlines, bottoms start at the waist, and shoes align consistently across varied photos.
+- Preserve the existing full builder for direct control; the avatar builder becomes the faster default, and Suggested looks can open into it.
+- Do not label garments as menswear or womenswear by default. Optional presentation/style tags may affect ranking, but any owned garment remains usable in every builder mode.
+
+## Batch closet import
+
+- V1: select up to 20 photos once, show a durable queue with per-item progress, process one garment at a time on-device, save completed pieces immediately, and resume unfinished work when the app is reopened.
+- Store queue state locally without permanently uploading original photos. Ask for category/details only when confidence is low; otherwise allow a fast review-all step after processing.
+- Prevent duplicate saves with a stable local job ID and database idempotency key.
+- Keep the screen awake while actively processing when supported and clearly explain that iPhone may pause work after the app closes.
+- Later opt-in experiment: upload originals to a private staging bucket and process them with a dedicated server worker. Require a new privacy/cost review, delete originals after completion, and do not claim unattended background processing until measured on real devices.
+
 ## Architecture decisions
 
 - Next.js App Router, strict TypeScript, Tailwind CSS, npm, and Node 20.19+
@@ -133,3 +153,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Approved up to $5/month for recommendation API usage. Analyze each garment once, benchmark ten items before bulk tagging, send compact text for outfit ranking, and enforce an application-side cutoff rather than relying only on provider alerts.
 - 2026-08-12: Added optional brand, exact price paid, currency, and purchase date to V1 so future spend and cost-per-wear analysis can build on original closet records.
 - 2026-08-12: Added the first sentence-based Suggest mode. Deterministic rules parse occasion, season, temperature, formality, and layering needs, rank valid owned-clothing combinations, and hand a result to the existing builder; paid AI remains an enhancement layer rather than a dependency.
+- 2026-08-12: Approved secure AI analysis of finished cutouts. API credentials remain server-only, responses are not stored by the provider request, and per-user usage is metered without retaining prompts or images.
+- 2026-08-12: Builder direction updated from a static collage to an optional neutral/masculine/feminine presentation avatar with independently swipeable garment lanes. Gender is user-selected presentation context and is never inferred.
+- 2026-08-12: Batch import direction set to a durable 20-photo on-device queue that resumes after interruption. Truly unattended server processing is deferred behind an explicit privacy and operating-cost review.
+- 2026-08-12: Automatic AI categorization was verified locally on a real post-cutout garment. Structured suggestions populate the review form; the original photo, API key, prompts, and images are not stored in usage metering.
