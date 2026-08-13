@@ -28,16 +28,16 @@ Gate A is complete only when a pilot friend can independently join, install the 
 - Multi-photo local import queue: completed pieces become usable while remaining pieces process sequentially with the app open
 - Clothing archive and restore
 - Self-service account deletion
-- Forgotten-password recovery — implemented; hosted email flow awaiting verification
+- Forgotten-password recovery — verified end to end in production
 - Expanded accessibility, Android, and failure testing
 - Privacy-conscious monitoring and backup/restore drill
 - Invite the remaining friends after pilot fixes
 
-## Intelligence roadmap (after the pilot)
+## Intelligence roadmap
 
 Implementation details and Pinterest constraints are maintained in [AI_RECOMMENDATION_PLAN.md](AI_RECOMMENDATION_PLAN.md).
 
-1. Add useful garment metadata: color, material, season, warmth, formality, and style tags.
+1. Add useful garment metadata: color, material, season, warmth, formality, and style tags. **Foundation implemented; existing-item confirmation and pilot UX check remain.**
 2. Record preference signals without training a model yet: outfit kept/skipped, liked/disliked, edited, and worn.
 3. Ship occasion recommendations using structured filters plus a language model that translates prompts such as “casual fall dinner” into closet constraints.
 4. Add weather and carefully sourced trend context as optional inputs, never as reasons to recommend clothes the user does not own.
@@ -57,7 +57,7 @@ Implementation details and Pinterest constraints are maintained in [AI_RECOMMEND
 ## Data model
 
 - `profiles`: display name, onboarding state, timestamps
-- `clothing_items`: owner, optional label, category, tags, private image metadata, processing state, reserved archive timestamp
+- `clothing_items`: owner, label, category, garment type, colors, material, pattern, season, warmth, formality, style/weather tags, metadata provenance/version, private image metadata, and timestamps
 - `outfits`: owner, name, private note, timestamps
 - `outfit_items`: owner, outfit, clothing item, and fixed slot
 - `outfit_shares`: owner, outfit, active/revoked state, timestamps
@@ -73,7 +73,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 5. **Real outfit creation, local draft, saved outfits, templates, and Style Deck — verified on iPhone**
 6. **Secure, revocable public sharing — link view verified on iPhone**
 7. **Focused tests and deployment — production deployment and core mobile checks complete**
-8. Two-friend pilot — onboarding checklist prepared; awaiting real-user sessions
+8. Two-friend pilot — owner-side mobile checks passed; awaiting two independent friend sessions
 
 ## Milestone 1 review gate
 
@@ -87,7 +87,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 
 ## Operating constraints
 
-- Normal operating-cost target: $0; no metered AI or image API in Gate A
+- Core-app operating-cost target: $0; recommendation API budget approved up to $5/month with an app-side cutoff and rules-only fallback
 - Up to five accounts and 250 clothing records per account
 - Final cutout: transparent WebP where supported, transparent PNG fallback on Safari, at most 1600 px and 600 KB
 - Primary target: iPhone Safari; Android Chrome is secondary
@@ -126,3 +126,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Exposed the existing private outfit-note field in create, edit, and saved-look views.
 - 2026-08-12: Fresh-database testing found implicit hosted Data API grants; added explicit least-privilege table grants while retaining owner-scoped RLS.
 - 2026-08-12: Password recovery now reuses the exact allow-listed `/auth/confirm` callback; the callback already defaults to the password screen.
+- 2026-08-12: Production password recovery was verified from request email through choosing a new password and returning to the closet.
+- 2026-08-12: Real-iPhone checks passed for leaving saved-look editing, saving private notes, deleting an outfit, and returning to a stable app state.
+- 2026-08-12: Recommendation metadata foundation shipped to Supabase. New and existing garments share versioned, editable fields so rules, vision tagging, and later preference learning use one durable source of truth.
+- 2026-08-12: Approved up to $5/month for recommendation API usage. Analyze each garment once, benchmark ten items before bulk tagging, send compact text for outfit ranking, and enforce an application-side cutoff rather than relying only on provider alerts.
