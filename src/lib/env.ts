@@ -27,3 +27,9 @@ export function serverEnv() {
     NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
   });
 }
+
+const aiSchema = z.object({ OPENAI_API_KEY: z.string().min(20) });
+
+export function aiEnv() {
+  return aiSchema.parse({ OPENAI_API_KEY: process.env.OPENAI_API_KEY });
+}

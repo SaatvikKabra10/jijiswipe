@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(17);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'owner-one@example.com', '{"display_name":"Owner One"}'),
@@ -27,9 +27,13 @@ insert into public.outfit_shares (outfit_id, owner_id, token_hash) values
   ('11111111-1111-4111-8111-111111111110', '11111111-1111-4111-8111-111111111111', repeat('1', 64)),
   ('22222222-2222-4222-8222-222222222220', '22222222-2222-4222-8222-222222222222', repeat('2', 64));
 
+insert into public.ai_usage_events (owner_id, feature, model) values
+  ('11111111-1111-4111-8111-111111111111', 'clothing_tag', 'test-model'),
+  ('22222222-2222-4222-8222-222222222222', 'clothing_tag', 'test-model');
+
 select results_eq(
-  $$select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('profiles','clothing_items','outfits','outfit_items','outfit_shares') and c.relrowsecurity$$,
-  array[5::bigint],
+  $$select count(*) from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relname in ('profiles','clothing_items','outfits','outfit_items','outfit_shares','ai_usage_events') and c.relrowsecurity$$,
+  array[6::bigint],
   'RLS is enabled on every private public table'
 );
 
@@ -41,6 +45,7 @@ select results_eq('select count(*) from clothing_items', array[2::bigint], 'owne
 select results_eq('select count(*) from outfits', array[1::bigint], 'owner one sees only their outfits');
 select results_eq('select count(*) from outfit_items', array[2::bigint], 'owner one sees only their outfit pieces');
 select results_eq('select count(*) from outfit_shares', array[1::bigint], 'owner one sees only their share records');
+select results_eq('select count(*) from ai_usage_events', array[1::bigint], 'owner one sees only their AI usage records');
 
 set local request.jwt.claim.sub = '22222222-2222-4222-8222-222222222222';
 

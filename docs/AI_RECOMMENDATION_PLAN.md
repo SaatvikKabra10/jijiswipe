@@ -27,6 +27,8 @@ This is more dependable than asking a model to invent an outfit from raw images 
 7. The user keeps, skips, edits, saves, or marks a suggestion as worn.
 8. Those actions become preference signals for future ranking.
 
+Automatic tagging is a proposal, never a silent decision. It runs on the finished cutout, fills the review form, shows confidence, and lets the user correct every field before saving. Corrections become the durable source of truth and future preference/quality data.
+
 ## Data additions
 
 ### Clothing items
@@ -62,7 +64,7 @@ Do not scrape Pinterest, proxy its images, or store Pins returned by an API. If 
 
 ## Delivery phases
 
-1. **Metadata foundation:** schema, editable garment details, controlled tag vocabulary, and backfill existing items. Schema and editing UI implemented; confirm the mobile flow and fill existing items before bulk AI analysis.
+1. **Metadata foundation:** schema, editable garment details, controlled tag vocabulary, and backfill existing items. Schema, editing UI, and automatic post-cutout tagging are implemented and verified locally; fill existing items before bulk analysis.
 2. **Rules engine:** occasion presets and valid outfit generation with no paid AI dependency. Implemented with a sentence-based Suggest mode; mobile quality testing remains.
 3. **Prompt recommendations:** language model parses free text and ranks rule-generated candidates; strict output validation and per-user limits.
 4. **Preference learning:** rerank using keeps, skips, edits, likes, and worn history; no custom training until enough data exists.
@@ -76,6 +78,8 @@ Do not scrape Pinterest, proxy its images, or store Pins returned by an API. If 
 - Put all model calls behind a server route with authentication, validation, timeouts, usage logging, per-user quotas, and an application-side monthly cutoff.
 - Keep the rules-only recommender available when an AI provider is unavailable or the budget is exhausted.
 - Never train on a user's photos or preferences without explicit consent.
+- Keep the provider key server-only, never log it, send only the finished cutout, disable provider-side response storage, and meter calls without storing prompts or images.
+- Automatic tagging was verified against a real garment after API billing activation; defaults are no longer mistaken for successful analysis.
 
 ## Gate to begin
 

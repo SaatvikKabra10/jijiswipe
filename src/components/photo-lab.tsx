@@ -91,12 +91,17 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
   const [pricePaid, setPricePaid] = useState("");
   const [currency, setCurrency] = useState<(typeof currencies)[number]>("USD");
   const [purchasedOn, setPurchasedOn] = useState("");
+  const [material, setMaterial] = useState<string | null>(null);
+  const [pattern, setPattern] = useState<string | null>(null);
+  const [styleTags, setStyleTags] = useState<string[]>([]);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analysisMessage, setAnalysisMessage] = useState("");
   const [saving, setSaving] = useState(false);
 
   const reset = useCallback(() => {
     if (source) URL.revokeObjectURL(source);
     if (result) URL.revokeObjectURL(result);
-    setSource(undefined); setResult(undefined); setResultBlob(undefined); setStage("guide"); setProgress(0); setRotation(0); setZoom(1); setCrop({ x: 0, y: 0 }); setLabel(""); setCategory("tops"); setItemType(garmentTypes.tops[0]); setPrimaryColor("black"); setFormality("casual"); setWarmth("midweight"); setItemSeasons([]); setBrand(""); setPricePaid(""); setCurrency("USD"); setPurchasedOn(""); setSaving(false); setMessage("");
+    setSource(undefined); setResult(undefined); setResultBlob(undefined); setStage("guide"); setProgress(0); setRotation(0); setZoom(1); setCrop({ x: 0, y: 0 }); setLabel(""); setCategory("tops"); setItemType(garmentTypes.tops[0]); setPrimaryColor("black"); setFormality("casual"); setWarmth("midweight"); setItemSeasons([]); setBrand(""); setPricePaid(""); setCurrency("USD"); setPurchasedOn(""); setMaterial(null); setPattern(null); setStyleTags([]); setAnalyzing(false); setAnalysisMessage(""); setSaving(false); setMessage("");
   }, [source, result]);
 
   useEffect(() => () => { if (source) URL.revokeObjectURL(source); if (result) URL.revokeObjectURL(result); }, [source, result]);
@@ -134,8 +139,27 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
         progress: (_key, current, total) => setProgress(total ? Math.max(3, Math.round((current / total) * 100)) : 3),
       });
       const ready = await uploadReadyBlob(output);
-      setResultBlob(ready); setResult(URL.createObjectURL(ready)); setProgress(100); setStage("result");
+      setResultBlob(ready); setResult(URL.createObjectURL(ready)); setProgress(100); setStage("result"); void analyze(ready);
     } catch (error) { setMessage(error instanceof Error ? error.message : "Background removal failed."); setStage("error"); }
+  }
+
+  async function analyze(blob: Blob) {
+    setAnalyzing(true); setAnalysisMessage("Reading the garment…");
+    try {
+      const form = new FormData();
+      form.set("image", blob, `cutout.${blob.type === "image/png" ? "png" : "webp"}`);
+      const response = await fetch("/api/ai/tag-clothing", { method: "POST", body: form });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Auto-fill is temporarily unavailable.");
+      const metadata = result.metadata;
+      const nextCategory = metadata.category as ClothingCategory;
+      setLabel((current) => current.trim() ? current : metadata.proposed_name);
+      setCategory(nextCategory); setItemType(garmentTypes[nextCategory].includes(metadata.item_type) ? metadata.item_type : "other");
+      setPrimaryColor(metadata.primary_color); setFormality(metadata.formality); setWarmth(metadata.warmth); setItemSeasons(metadata.seasons);
+      setMaterial(metadata.material); setPattern(metadata.pattern); setStyleTags(metadata.style_tags);
+      setAnalysisMessage(metadata.confidence === "low" ? "Suggestions added with low confidence. Please review them." : "Suggestions added. Change anything that looks wrong.");
+    } catch (error) { setAnalysisMessage(error instanceof Error ? error.message : "Auto-fill is temporarily unavailable. Enter details manually."); }
+    finally { setAnalyzing(false); }
   }
 
   async function save() {
@@ -152,7 +176,8 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
       path = `${user.id}/${randomId()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from("clothing").upload(path, resultBlob, { contentType, upsert: false });
       if (uploadError) throw uploadError;
-      const { error: insertError } = await supabase.from("clothing_items").insert({ owner_id: user.id, label: label.trim(), category, storage_path: path, item_type: itemType, primary_color: primaryColor, formality, warmth, seasons: itemSeasons, brand: brand.trim() || null, purchase_price_cents: centsFromPrice(pricePaid), purchase_currency: currency, purchased_on: purchasedOn || null, metadata_source: "manual", metadata_confirmed_at: new Date().toISOString() });
+      const aiAssisted = Boolean(styleTags.length || material || pattern);
+      const { error: insertError } = await supabase.from("clothing_items").insert({ owner_id: user.id, label: label.trim(), category, storage_path: path, item_type: itemType, primary_color: primaryColor, formality, warmth, seasons: itemSeasons, material, pattern, style_tags: styleTags, brand: brand.trim() || null, purchase_price_cents: centsFromPrice(pricePaid), purchase_currency: currency, purchased_on: purchasedOn || null, metadata_source: aiAssisted ? "ai" : "manual", analysis_model: aiAssisted ? "gpt-5.6-luna" : null, metadata_confirmed_at: new Date().toISOString() });
       if (insertError) { await supabase.storage.from("clothing").remove([path]); throw insertError; }
       await onSaved(); reset(); onClose();
     } catch (error) {
@@ -164,6 +189,7 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
     <div className="lab-backdrop" role="dialog" aria-modal="true" aria-label="Add clothing photo">
       <section className="photo-lab">
         <header><button onClick={() => { reset(); onClose(); }} aria-label="Close photo lab">×</button><strong>Add a piece</strong><span>LOCAL</span></header>
+        {stage === "result" && <div className={`analysis-status ${analyzing ? "working" : ""}`} role="status"><span>{analyzing ? "✦" : "✓"}</span><p><strong>{analyzing ? "Auto-filling details" : "AI-assisted details"}</strong>{analysisMessage}</p></div>}
         {stage === "guide" && <div className="lab-body guide"><p className="eyebrow">Better photo, better cutout</p><h2>Keep it clean.</h2><div className="photo-guide"><div className="guide-shirt">✦</div></div><ul><li>Use one item and a plain background</li><li>Frame the full piece from straight above</li><li>Use bright, even light with minimal shadows</li></ul><label className="primary-button">Choose photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={(event) => choose(event.target.files?.[0])} /></label><small>{modelReady ? "Cutout engine ready · photo stays on this device." : "Preparing cutout engine · photo stays on this device."}</small></div>}
         {stage === "crop" && source && <div className="lab-body crop-stage"><div className="crop-area"><Cropper image={source} crop={crop} zoom={zoom} rotation={rotation} aspect={4 / 5} onCropChange={setCrop} onZoomChange={setZoom} onRotationChange={setRotation} onCropComplete={(_percent, pixels) => setArea(pixels)} /></div><div className="crop-controls"><label>Zoom<input type="range" min="1" max="3" step=".05" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></label><button onClick={() => setRotation((rotation + 90) % 360)}>Rotate 90°</button><button className="primary-button" onClick={process}>Remove background</button></div></div>}
         {stage === "processing" && <div className="lab-body processing"><div className="spinner"/><p className="eyebrow">Working on your phone</p><h2>Cutting it out…</h2><div className="progress"><i style={{ width: `${progress}%` }}/></div><p>{progress < 10 ? "Downloading the model may take a minute the first time." : `${progress}% complete`}</p></div>}
