@@ -33,3 +33,9 @@ const aiSchema = z.object({ OPENAI_API_KEY: z.string().min(20) });
 export function aiEnv() {
   return aiSchema.parse({ OPENAI_API_KEY: process.env.OPENAI_API_KEY });
 }
+
+const segmentationSchema = z.object({ FAL_KEY: z.string().min(20) });
+
+export function segmentationEnv() {
+  return segmentationSchema.parse({ FAL_KEY: process.env.FAL_KEY });
+}

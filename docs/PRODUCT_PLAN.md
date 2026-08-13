@@ -64,6 +64,14 @@ The long-term builder should feel like dressing a person, not arranging disconne
 - Keep the screen awake while actively processing when supported and clearly explain that iPhone may pause work after the app closes.
 - Later opt-in experiment: upload originals to a private staging bucket and process them with a dedicated server worker. Require a new privacy/cost review, delete originals after completion, and do not claim unattended background processing until measured on real devices.
 
+## Alta-informed quality benchmark
+
+- Alta publicly identifies Meta Segment Anything as the core of its garment digitization pipeline and reports testing it across eight fashion categories. JijiSwipe must benchmark promptable fashion segmentation rather than assuming a general background remover can match that result.
+- Before changing providers, compare the current local model with hosted SAM 3 on ten consented difficult photos: mannequin-backed tops, hangers, white-on-white garments, dark-on-dark garments, thin straps, jewelry, shoes, reflective materials, patterned pieces, and layered fabric.
+- Score garment completeness, retained background, color fidelity, edge quality, processing time, and per-image cost. Do not ship the hosted path unless it materially improves the first four without exceeding the approved operating budget.
+- A hosted SAM path requires explicit user disclosure because the original photo leaves the device. Keep credentials server-only, use short-lived processing URLs, do not train on user images, and delete temporary originals/results according to a documented retention window.
+- Treat personalized avatar try-on as a separate generated visualization, not a precise fit guarantee. Prototype it only after garment extraction is reliable, with explicit consent for body/selfie images and a measured per-render budget.
+
 ## Architecture decisions
 
 - Next.js App Router, strict TypeScript, Tailwind CSS, npm, and Node 20.19+
@@ -161,3 +169,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-13: Began the batch-import milestone: users can select up to 20 photos, originals remain in device-local IndexedDB, completed garments save one at a time, and unfinished photos can be resumed after reopening the app.
 - 2026-08-13: Batch import changed to a hands-off pipeline: full photos are prepared, cut out, AI-categorized, and saved sequentially while the app stays open. Results are usable immediately but remain in a visible quick-review inbox until the owner confirms or corrects them; single-photo import retains precision cropping.
 - 2026-08-13: Quick review now advances directly to the next unconfirmed import after approval or deletion. New cutouts are alpha-trimmed and repadded before upload so varied source framing produces consistently centered, fully visible closet cards.
+- 2026-08-13: Added an authenticated, server-only SAM 3 benchmark boundary with strict image validation, timeouts, trusted result downloads, no-store responses, and per-user daily/monthly quotas. The hosted provider is not yet the product default; it must pass the documented ten-garment comparison first.
