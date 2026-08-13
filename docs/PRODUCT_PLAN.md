@@ -57,7 +57,7 @@ Implementation details and Pinterest constraints are maintained in [AI_RECOMMEND
 ## Data model
 
 - `profiles`: display name, onboarding state, timestamps
-- `clothing_items`: owner, label, category, garment type, colors, material, pattern, season, warmth, formality, style/weather tags, metadata provenance/version, private image metadata, and timestamps
+- `clothing_items`: owner, label, category, garment type, colors, material, pattern, season, warmth, formality, style/weather tags, brand, exact purchase price/currency/date, metadata provenance/version, private image metadata, and timestamps
 - `outfits`: owner, name, private note, timestamps
 - `outfit_items`: owner, outfit, clothing item, and fixed slot
 - `outfit_shares`: owner, outfit, active/revoked state, timestamps
@@ -130,3 +130,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Real-iPhone checks passed for leaving saved-look editing, saving private notes, deleting an outfit, and returning to a stable app state.
 - 2026-08-12: Recommendation metadata foundation shipped to Supabase. New and existing garments share versioned, editable fields so rules, vision tagging, and later preference learning use one durable source of truth.
 - 2026-08-12: Approved up to $5/month for recommendation API usage. Analyze each garment once, benchmark ten items before bulk tagging, send compact text for outfit ranking, and enforce an application-side cutoff rather than relying only on provider alerts.
+- 2026-08-12: Added optional brand, exact price paid, currency, and purchase date to V1 so future spend and cost-per-wear analysis can build on original closet records.
