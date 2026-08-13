@@ -69,7 +69,7 @@ export default function Home() {
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
-    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path,item_type,primary_color,formality,warmth,seasons").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path,item_type,primary_color,formality,warmth,seasons,brand,purchase_price_cents,purchase_currency,purchased_on").order("created_at", { ascending: false });
     if (error) { setClosetMessage("Your saved pieces could not be loaded."); return; }
     const withUrls = await Promise.all((data ?? []).map(async (item) => {
       const { data: signed } = await supabase.storage.from("clothing").createSignedUrl(item.storage_path, 3600);

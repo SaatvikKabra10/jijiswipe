@@ -14,6 +14,7 @@ export const clothingColors = ["black", "white", "gray", "cream", "brown", "beig
 export const formalities = ["relaxed", "casual", "smart-casual", "formal"] as const;
 export const warmthLevels = ["lightweight", "midweight", "heavyweight"] as const;
 export const seasons = ["spring", "summer", "fall", "winter"] as const;
+export const currencies = ["USD", "CAD", "EUR", "GBP"] as const;
 
 export type ClothingMetadata = {
   item_type: string | null;
@@ -21,7 +22,21 @@ export type ClothingMetadata = {
   formality: (typeof formalities)[number] | null;
   warmth: (typeof warmthLevels)[number] | null;
   seasons: (typeof seasons)[number][];
+  brand: string | null;
+  purchase_price_cents: number | null;
+  purchase_currency: (typeof currencies)[number];
+  purchased_on: string | null;
 };
+
+export function centsFromPrice(value: string) {
+  if (!value.trim()) return null;
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount >= 0 ? Math.round(amount * 100) : null;
+}
+
+export function priceFromCents(value: number | null) {
+  return value === null ? "" : (value / 100).toFixed(2);
+}
 
 export function titleCase(value: string) {
   return value.split(/[- ]/).map((word) => word ? word[0].toUpperCase() + word.slice(1) : word).join(" ");
