@@ -1,6 +1,6 @@
 # JijiSwipe Product Plan
 
-Last updated: August 12, 2026
+Last updated: August 13, 2026
 Status: Core product loop complete; two-friend pilot readiness in progress
 
 ## Product goal
@@ -158,3 +158,6 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Batch import direction set to a durable 20-photo on-device queue that resumes after interruption. Truly unattended server processing is deferred behind an explicit privacy and operating-cost review.
 - 2026-08-12: Automatic AI categorization was verified locally on a real post-cutout garment. Structured suggestions populate the review form; the original photo, API key, prompts, and images are not stored in usage metering.
 - 2026-08-12: Added privacy-safe PWA shell caching. Repeat launches reuse versioned JijiSwipe code and public icons while authentication, private data, API responses, and signed clothing images stay outside the service-worker cache.
+- 2026-08-13: Began the batch-import milestone: users can select up to 20 photos, originals remain in device-local IndexedDB, completed garments save one at a time, and unfinished photos can be resumed after reopening the app.
+- 2026-08-13: Batch import changed to a hands-off pipeline: full photos are prepared, cut out, AI-categorized, and saved sequentially while the app stays open. Results are usable immediately but remain in a visible quick-review inbox until the owner confirms or corrects them; single-photo import retains precision cropping.
+- 2026-08-13: Quick review now advances directly to the next unconfirmed import after approval or deletion. New cutouts are alpha-trimmed and repadded before upload so varied source framing produces consistently centered, fully visible closet cards.
