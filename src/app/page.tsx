@@ -19,6 +19,7 @@ type SavedClosetItem = ClothingMetadata & {
   category: ClothingCategory;
   storage_path: string;
   imageUrl: string;
+  metadata_confirmed_at: string | null;
 };
 type SavedOutfit = { id: string; name: string; note: string; created_at: string; outfit_items: { clothing_item_id: string; slot: Slot }[] };
 
@@ -72,13 +73,14 @@ export default function Home() {
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
-    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path,item_type,primary_color,formality,warmth,seasons,brand,purchase_price_cents,purchase_currency,purchased_on").order("created_at", { ascending: false });
-    if (error) { setClosetMessage("Your saved pieces could not be loaded."); return; }
+    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path,item_type,primary_color,formality,warmth,seasons,brand,purchase_price_cents,purchase_currency,purchased_on,metadata_confirmed_at").order("created_at", { ascending: false });
+    if (error) { setClosetMessage("Your saved pieces could not be loaded."); return [] as SavedClosetItem[]; }
     const withUrls = await Promise.all((data ?? []).map(async (item) => {
       const { data: signed } = await supabase.storage.from("clothing").createSignedUrl(item.storage_path, 3600);
       return { ...item, imageUrl: signed?.signedUrl ?? "" } as SavedClosetItem;
     }));
     setSavedItems(withUrls); setClosetMessage("");
+    return withUrls;
   }, []);
 
   const loadSavedOutfits = useCallback(async () => {
@@ -106,6 +108,7 @@ export default function Home() {
   }, [loadAvatar, loadSavedItems, loadSavedOutfits]);
 
   const savedFiltered = filter === "All" ? savedItems : savedItems.filter((item) => item.category === filter.toLowerCase());
+  const reviewItems = savedItems.filter((item) => !item.metadata_confirmed_at);
   const choices = savedItems.filter((item) => item.category === slotCategory[activeSlot]);
   const chosenItems = slots.flatMap((slot) => {
     const item = savedItems.find((candidate) => candidate.id === look[slot]);
@@ -248,6 +251,7 @@ export default function Home() {
               {categories.map((category) => <button key={category} className={filter === category ? "active" : ""} onClick={() => setFilter(category)}>{category}</button>)}
             </div>
             {closetMessage && <p className="form-error closet-message" role="alert">{closetMessage}</p>}
+            {reviewItems.length > 0 && <button className="review-inbox" onClick={() => setSelectedItem(reviewItems[0])}><span>✦</span><p><strong>Review {reviewItems.length} new item{reviewItems.length === 1 ? "" : "s"}</strong>AI finished the work. Tap through for a quick check.</p><b>Review</b></button>}
             {!closetMessage && savedFiltered.length === 0 && <div className="closet-empty"><p className="eyebrow">Nothing here yet</p><h2>{filter === "All" ? "Add your first piece." : `No ${filter.toLowerCase()} saved.`}</h2><p>Photograph one item and JijiSwipe will cut it out privately on your phone.</p><button className="primary-button" onClick={() => setPhotoLabOpen(true)}>Add a piece</button></div>}
             <div className="closet-grid">
               {savedFiltered.map((item) => (
@@ -334,8 +338,8 @@ export default function Home() {
         <button className={tab === "create" ? "active" : ""} onClick={() => setTab("create")}><span className="nav-icon"><Icon name="spark" /></span><span>Create</span></button>
         <button className={tab === "outfits" ? "active" : ""} onClick={() => setTab("outfits")}><span className="nav-icon"><Icon name="looks" /></span><span>Outfits</span></button>
       </nav>}
-      <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} onSaved={loadSavedItems} />
-      {selectedItem && <ItemDetailSheet item={selectedItem} onClose={() => setSelectedItem(undefined)} onChanged={async () => { await loadSavedItems(); await loadSavedOutfits(); }} />}
+      <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} onSaved={async () => { await loadSavedItems(); }} />
+      {selectedItem && <ItemDetailSheet key={selectedItem.id} item={selectedItem} onClose={() => setSelectedItem(undefined)} onChanged={async () => { const refreshed = await loadSavedItems(); await loadSavedOutfits(); if (!selectedItem.metadata_confirmed_at) { const next = refreshed.find((item) => !item.metadata_confirmed_at && item.id !== selectedItem.id); if (next) { setSelectedItem(next); return true; } } return false; }} />}
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} onAvatar={setAvatarUrl} />
     </main>
   );
