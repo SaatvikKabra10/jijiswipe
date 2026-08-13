@@ -124,3 +124,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Raised the top-and-bottom composition within the outfit canvas so garment cutouts remain centered and bottoms are not clipped at the stage edge.
 - 2026-08-12: Added a full-size back control to saved-look editing and confirmed outfit deletion; deleting an outfit also cascades to its private pieces and public share record.
 - 2026-08-12: Exposed the existing private outfit-note field in create, edit, and saved-look views.
+- 2026-08-12: Fresh-database testing found implicit hosted Data API grants; added explicit least-privilege table grants while retaining owner-scoped RLS.
