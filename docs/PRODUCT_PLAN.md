@@ -35,6 +35,8 @@ Gate A is complete only when a pilot friend can independently join, install the 
 
 ## Intelligence roadmap (after the pilot)
 
+Implementation details and Pinterest constraints are maintained in [AI_RECOMMENDATION_PLAN.md](AI_RECOMMENDATION_PLAN.md).
+
 1. Add useful garment metadata: color, material, season, warmth, formality, and style tags.
 2. Record preference signals without training a model yet: outfit kept/skipped, liked/disliked, edited, and worn.
 3. Ship occasion recommendations using structured filters plus a language model that translates prompts such as “casual fall dinner” into closet constraints.
@@ -119,3 +121,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Removed the duplicate Layered template. Top + bottom retains optional outerwear, shoes, and accessories; Dress / one-piece remains the only alternate structure.
 - 2026-08-12: Saved looks can be reopened in the builder, renamed, restyled, and saved back to the existing outfit.
 - 2026-08-12: Saved-look editing became a focused mode: creation/deck controls and bottom navigation are hidden until the user saves or cancels, preventing the form from being covered.
+- 2026-08-12: Raised the top-and-bottom composition within the outfit canvas so garment cutouts remain centered and bottoms are not clipped at the stage edge.
