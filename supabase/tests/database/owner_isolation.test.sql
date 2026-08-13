@@ -60,9 +60,9 @@ select results_eq(
   'owner two cannot delete owner one outfits'
 );
 
-set local role anon;
-select results_eq('select count(*) from clothing_items', array[0::bigint], 'anonymous visitors cannot read clothing');
-select results_eq('select count(*) from outfits', array[0::bigint], 'anonymous visitors cannot read outfits');
+reset role;
+select ok(not has_table_privilege('anon', 'public.clothing_items', 'select'), 'anonymous visitors have no clothing table access');
+select ok(not has_table_privilege('anon', 'public.outfits', 'select'), 'anonymous visitors have no outfit table access');
 
 select * from finish();
 rollback;
