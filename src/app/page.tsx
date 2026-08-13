@@ -5,12 +5,13 @@ import { PhotoLab } from "@/components/photo-lab";
 import { ItemDetailSheet } from "@/components/item-detail-sheet";
 import { ProfileSheet } from "@/components/profile-sheet";
 import type { ClothingCategory, ClothingMetadata } from "@/lib/clothing-metadata";
+import { recommendOwnedOutfits } from "@/lib/outfit-recommender";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
 type Slot = "top" | "bottom" | "one-piece" | "outerwear" | "shoes" | "accessory";
 type OutfitTemplate = "separates" | "one-piece";
-type BuilderMode = "build" | "deck";
+type BuilderMode = "build" | "deck" | "suggest";
 
 type SavedClosetItem = ClothingMetadata & {
   id: string;
@@ -66,6 +67,8 @@ export default function Home() {
   const [selectedItem, setSelectedItem] = useState<SavedClosetItem>();
   const [profileOpen, setProfileOpen] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [suggestionPrompt, setSuggestionPrompt] = useState("");
+  const [suggestionSubmitted, setSuggestionSubmitted] = useState("");
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
@@ -125,12 +128,17 @@ export default function Home() {
     return suggestion;
   }, [deckIndex, savedItems]);
   const deckItems = Object.entries(deckLook).filter((entry): entry is [Slot, SavedClosetItem] => Boolean(entry[1]));
+  const recommendations = useMemo(() => suggestionSubmitted.trim() ? recommendOwnedOutfits(savedItems, suggestionSubmitted) : [], [savedItems, suggestionSubmitted]);
 
   function nextDeck() { setDeckIndex((index) => index + 1); setDragX(0); }
   function keepDeck() {
     setLook(Object.fromEntries(deckItems.map(([slot, item]) => [slot, item.id])));
     setOutfitTemplate(deckLook["one-piece"] ? "one-piece" : "separates");
     setActiveSlot(deckLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setDragX(0);
+  }
+
+  function applyRecommendation(itemIds: Partial<Record<Slot, string>>) {
+    setLook(itemIds); setOutfitTemplate(itemIds["one-piece"] ? "one-piece" : "separates"); setActiveSlot(itemIds["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setOutfitMessage("");
   }
   function finishDeckSwipe() {
     if (dragX > 70) keepDeck(); else if (dragX < -70) nextDeck(); else setDragX(0);
@@ -256,7 +264,7 @@ export default function Home() {
           <section aria-labelledby="create-title">
             {editingOutfitId && <button className="editor-back" onClick={cancelEdit}><span aria-hidden="true">←</span> Back to saved looks</button>}
             <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && !editingOutfitId && <button className="text-button" onClick={resetBuilder}>Start over</button>}</div>
-            {!editingOutfitId && <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>}
+            {!editingOutfitId && <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button><button className={builderMode === "suggest" ? "active" : ""} onClick={() => setBuilderMode("suggest")}>Suggest</button></div>}
             {builderMode === "build" && <><div className="template-switcher" aria-label="Outfit template">
               {(["separates", "one-piece"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : "Dress / one-piece"}</button>)}
             </div>
@@ -292,6 +300,7 @@ export default function Home() {
                 {deckItems.map(([slot, item]) => <div className={`deck-piece ${slot}`} key={slot}><img src={item.imageUrl} alt={item.label}/><small>{item.label}</small></div>)}
               </div></div><p className="deck-hint">Swipe right to keep · left to skip</p><div className="deck-actions"><button onClick={() => setDeckIndex((index) => Math.max(0, index - 1))}>↶<span>Undo</span></button><button className="skip" onClick={nextDeck}>×<span>Skip</span></button><button className="keep" onClick={keepDeck}>♥<span>Keep</span></button><button onClick={nextDeck}>⤨<span>Shuffle</span></button></div></> : <div className="closet-empty deck-empty"><p className="eyebrow">Deck needs variety</p><h2>Add a wearable pair.</h2><p>Save a top and bottom, or a one-piece plus shoes or an accessory, to start remixing.</p><button className="primary-button" onClick={() => { setTab("closet"); setPhotoLabOpen(true); }}>Add a piece</button></div>}
             </div>}
+            {builderMode === "suggest" && <div className="suggest-panel"><div className="suggest-intro"><p className="eyebrow">Your closet, your occasion</p><h2>What are you dressing for?</h2><p>Describe the plan, weather, and vibe. Every result uses only pieces you own.</p></div><form onSubmit={(event) => { event.preventDefault(); setSuggestionSubmitted(suggestionPrompt.trim()); }}><label htmlFor="outfit-request" className="sr-only">Describe your occasion</label><textarea id="outfit-request" value={suggestionPrompt} maxLength={240} onChange={(event) => setSuggestionPrompt(event.target.value)} placeholder="Casual outdoor birthday dinner on a cool fall night"/><div className="prompt-chips" aria-label="Example occasions">{["Casual summer day", "Nice dinner date", "Cold outdoor event"].map((example) => <button type="button" key={example} onClick={() => { setSuggestionPrompt(example); setSuggestionSubmitted(example); }}>{example}</button>)}</div><button className="primary-button" disabled={!suggestionPrompt.trim()}>Suggest from my closet <Icon name="spark" /></button></form>{suggestionSubmitted && recommendations.length === 0 && <div className="closet-empty"><p className="eyebrow">More pieces needed</p><h2>Add a wearable base.</h2><p>Suggestions need a top and bottom, or a one-piece. Add those first and try again.</p><button className="primary-button" onClick={() => { setTab("closet"); setPhotoLabOpen(true); }}>Add a piece</button></div>}<div className="recommendation-list">{recommendations.map((recommendation, index) => { const pieces = Object.entries(recommendation.itemIds).flatMap(([slot, id]) => { const item = savedItems.find((candidate) => candidate.id === id); return item ? [{ slot, item }] : []; }); return <article className="recommendation-card" key={recommendation.id}><div className="recommendation-label">LOOK {String(index + 1).padStart(2, "0")}</div><div className="recommendation-pieces">{pieces.map(({ slot, item }) => <div className={`recommendation-piece ${slot}`} key={slot}><img src={item.imageUrl} alt={item.label}/><span>{item.label}</span></div>)}</div><p>{recommendation.reason}</p><button onClick={() => applyRecommendation(recommendation.itemIds)}>Refine this look <Icon name="arrow" /></button></article>; })}</div></div>}
           </section>
         )}
 
