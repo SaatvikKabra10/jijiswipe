@@ -38,10 +38,11 @@ Gate A is complete only when a pilot friend can independently join, install the 
 Implementation details and Pinterest constraints are maintained in [AI_RECOMMENDATION_PLAN.md](AI_RECOMMENDATION_PLAN.md).
 
 1. Add useful garment metadata: color, material, season, warmth, formality, and style tags. **Foundation implemented; existing-item confirmation and pilot UX check remain.**
-2. Record preference signals without training a model yet: outfit kept/skipped, liked/disliked, edited, and worn.
-3. Ship occasion recommendations using structured filters plus a language model that translates prompts such as “casual fall dinner” into closet constraints.
-4. Add weather and carefully sourced trend context as optional inputs, never as reasons to recommend clothes the user does not own.
-5. Personalize ranking only after each user has enough real feedback; start with a simple scoring model before custom machine learning.
+2. Provide deterministic owned-clothes occasion suggestions from controlled metadata, with a visible sentence-based Suggest mode and rules-only fallback.
+3. Record preference signals without training a model yet: outfit kept/skipped, liked/disliked, edited, and worn.
+4. Add a language model that translates prompts such as “casual fall dinner” into richer closet constraints and reranks rule-valid candidates.
+5. Add weather and carefully sourced trend context as optional inputs, never as reasons to recommend clothes the user does not own.
+6. Personalize ranking only after each user has enough real feedback; start with a simple scoring model before custom machine learning.
 
 ## Architecture decisions
 
@@ -131,3 +132,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Recommendation metadata foundation shipped to Supabase. New and existing garments share versioned, editable fields so rules, vision tagging, and later preference learning use one durable source of truth.
 - 2026-08-12: Approved up to $5/month for recommendation API usage. Analyze each garment once, benchmark ten items before bulk tagging, send compact text for outfit ranking, and enforce an application-side cutoff rather than relying only on provider alerts.
 - 2026-08-12: Added optional brand, exact price paid, currency, and purchase date to V1 so future spend and cost-per-wear analysis can build on original closet records.
+- 2026-08-12: Added the first sentence-based Suggest mode. Deterministic rules parse occasion, season, temperature, formality, and layering needs, rank valid owned-clothing combinations, and hand a result to the existing builder; paid AI remains an enhancement layer rather than a dependency.

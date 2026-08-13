@@ -63,7 +63,7 @@ Do not scrape Pinterest, proxy its images, or store Pins returned by an API. If 
 ## Delivery phases
 
 1. **Metadata foundation:** schema, editable garment details, controlled tag vocabulary, and backfill existing items. Schema and editing UI implemented; confirm the mobile flow and fill existing items before bulk AI analysis.
-2. **Rules engine:** occasion presets and valid outfit generation with no paid AI dependency.
+2. **Rules engine:** occasion presets and valid outfit generation with no paid AI dependency. Implemented with a sentence-based Suggest mode; mobile quality testing remains.
 3. **Prompt recommendations:** language model parses free text and ranks rule-generated candidates; strict output validation and per-user limits.
 4. **Preference learning:** rerank using keeps, skips, edits, likes, and worn history; no custom training until enough data exists.
 5. **Context:** optional weather, then carefully approved trend signals and inspiration links.
