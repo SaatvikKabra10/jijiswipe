@@ -27,7 +27,7 @@ export function AuthCard({ mode }: { mode: Mode }) {
         if (signInError) throw signInError;
         router.replace("/"); router.refresh();
       } else if (mode === "recover") {
-        const { error: recoveryError } = await createClient().auth.resetPasswordForEmail(String(values.get("email")), { redirectTo: `${window.location.origin}/auth/confirm?next=/auth/set-password` });
+        const { error: recoveryError } = await createClient().auth.resetPasswordForEmail(String(values.get("email")), { redirectTo: `${window.location.origin}/auth/confirm` });
         if (recoveryError) throw recoveryError;
         setMessage("If that email belongs to an account, a secure reset link is on its way.");
       } else {
