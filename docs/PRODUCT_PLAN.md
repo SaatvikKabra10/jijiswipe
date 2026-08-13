@@ -108,3 +108,5 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Token-hashed public outfit links and unauthenticated read-only outfit pages were verified on iPhone. Private images remain behind short-lived signed URLs; owners can revoke links.
 - 2026-08-12: Closet-item editing/deletion, profile photos, profile editing, and reliable sign-out shipped to production.
 - 2026-08-12: Added in-app iPhone installation guidance and a standalone-app manifest check for the two-friend pilot.
+- 2026-08-12: Removed the duplicate Layered template. Top + bottom retains optional outerwear, shoes, and accessories; Dress / one-piece remains the only alternate structure.
+- 2026-08-12: Saved looks can be reopened in the builder, renamed, restyled, and saved back to the existing outfit.

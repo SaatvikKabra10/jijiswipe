@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
 type Slot = "top" | "bottom" | "one-piece" | "outerwear" | "shoes" | "accessory";
-type OutfitTemplate = "separates" | "one-piece" | "layered";
+type OutfitTemplate = "separates" | "one-piece";
 type BuilderMode = "build" | "deck";
 
 type SavedClosetItem = {
@@ -54,6 +54,7 @@ export default function Home() {
   const [savedItems, setSavedItems] = useState<SavedClosetItem[]>([]);
   const [closetMessage, setClosetMessage] = useState("");
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
+  const [editingOutfitId, setEditingOutfitId] = useState<string>();
   const [outfitName, setOutfitName] = useState("");
   const [savingOutfit, setSavingOutfit] = useState(false);
   const [outfitMessage, setOutfitMessage] = useState("");
@@ -126,7 +127,7 @@ export default function Home() {
   function nextDeck() { setDeckIndex((index) => index + 1); setDragX(0); }
   function keepDeck() {
     setLook(Object.fromEntries(deckItems.map(([slot, item]) => [slot, item.id])));
-    setOutfitTemplate(deckLook["one-piece"] ? "one-piece" : deckLook.outerwear ? "layered" : "separates");
+    setOutfitTemplate(deckLook["one-piece"] ? "one-piece" : "separates");
     setActiveSlot(deckLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setDragX(0);
   }
   function finishDeckSwipe() {
@@ -140,6 +141,15 @@ export default function Home() {
     else { setLook((current) => ({ top: current.top, bottom: current.bottom, outerwear: current.outerwear, shoes: current.shoes, accessory: current.accessory })); setActiveSlot("top"); }
   }
 
+  function resetBuilder() {
+    setLook({}); setOutfitName(""); setEditingOutfitId(undefined); setOutfitTemplate("separates"); setActiveSlot("top"); setOutfitMessage("");
+  }
+
+  function editOutfit(outfit: SavedOutfit) {
+    const nextLook = Object.fromEntries(outfit.outfit_items.map(({ clothing_item_id, slot }) => [slot, clothing_item_id])) as Partial<Record<Slot, string>>;
+    setLook(nextLook); setOutfitName(outfit.name); setEditingOutfitId(outfit.id); setOutfitTemplate(nextLook["one-piece"] ? "one-piece" : "separates"); setActiveSlot(nextLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setOutfitMessage(""); setTab("create");
+  }
+
   async function saveOutfit() {
     if (chosenItems.length < 2 || !outfitName.trim()) { setOutfitMessage("Name your look before saving."); return; }
     setSavingOutfit(true); setOutfitMessage("");
@@ -148,12 +158,27 @@ export default function Home() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Your session expired. Sign in again and retry.");
-      const { data: outfit, error: outfitError } = await supabase.from("outfits").insert({ owner_id: session.user.id, name: outfitName.trim() }).select("id").single();
-      if (outfitError) throw outfitError;
-      outfitId = outfit.id;
-      const { error: itemsError } = await supabase.from("outfit_items").insert(chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot })));
-      if (itemsError) { await supabase.from("outfits").delete().eq("id", outfitId); throw itemsError; }
-      setLook({}); setOutfitName(""); await loadSavedOutfits(); setTab("outfits");
+      if (editingOutfitId) {
+        outfitId = editingOutfitId;
+        const { error: outfitError } = await supabase.from("outfits").update({ name: outfitName.trim() }).eq("id", outfitId);
+        if (outfitError) throw outfitError;
+        const rows = chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot }));
+        const { error: itemsError } = await supabase.from("outfit_items").upsert(rows, { onConflict: "outfit_id,slot" });
+        if (itemsError) throw itemsError;
+        const chosenSlots = chosenItems.map(({ slot }) => slot);
+        const removedSlots = slots.filter((slot) => !chosenSlots.includes(slot));
+        if (removedSlots.length) {
+          const { error: removeError } = await supabase.from("outfit_items").delete().eq("outfit_id", outfitId).in("slot", removedSlots);
+          if (removeError) throw removeError;
+        }
+      } else {
+        const { data: outfit, error: outfitError } = await supabase.from("outfits").insert({ owner_id: session.user.id, name: outfitName.trim() }).select("id").single();
+        if (outfitError) throw outfitError;
+        outfitId = outfit.id;
+        const { error: itemsError } = await supabase.from("outfit_items").insert(chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot })));
+        if (itemsError) { await supabase.from("outfits").delete().eq("id", outfitId); throw itemsError; }
+      }
+      resetBuilder(); await loadSavedOutfits(); setTab("outfits");
     } catch (error) { setOutfitMessage(error instanceof Error ? error.message : "This look could not be saved."); }
     finally { setSavingOutfit(false); }
   }
@@ -214,13 +239,13 @@ export default function Home() {
 
         {tab === "create" && (
           <section aria-labelledby="create-title">
-            <div className="create-heading"><div><p className="eyebrow">Build a look</p><h1 id="create-title">Swipe to style</h1></div>{builderMode === "build" && <button className="text-button" onClick={() => setLook({})}>Start over</button>}</div>
+            <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && <button className="text-button" onClick={resetBuilder}>{editingOutfitId ? "Cancel edit" : "Start over"}</button>}</div>
             <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>
             {builderMode === "build" && <><div className="template-switcher" aria-label="Outfit template">
-              {(["separates", "one-piece", "layered"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : template === "one-piece" ? "Dress / one-piece" : "Layered"}</button>)}
+              {(["separates", "one-piece"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : "Dress / one-piece"}</button>)}
             </div>
             <div className="look-stage">
-              <div className="look-number">DRAFT · {chosenItems.length} PIECES</div>
+              <div className="look-number">{editingOutfitId ? "EDITING" : "DRAFT"} · {chosenItems.length} PIECES</div>
               <div className={`outfit-canvas template-${outfitTemplate}`}>
                 {slots.filter((slot) => outfitTemplate === "one-piece" ? !["top", "bottom"].includes(slot) : slot !== "one-piece").map((slot) => {
                   const item = savedItems.find((candidate) => candidate.id === look[slot]);
@@ -242,7 +267,7 @@ export default function Home() {
               </div>
               {chosenItems.length >= 2 && <label className="outfit-name">Look name<input value={outfitName} maxLength={60} onChange={(event) => setOutfitName(event.target.value)} placeholder="Tuesday layers" /></label>}
               {outfitMessage && <p className="form-error" role="alert">{outfitMessage}</p>}
-              <button className="primary-button" disabled={chosenItems.length < 2 || savingOutfit} onClick={saveOutfit}>{savingOutfit ? "Saving privately…" : chosenItems.length < 2 ? `Choose ${2 - chosenItems.length} more piece${chosenItems.length === 0 ? "s" : ""}` : "Save this look"} <Icon name="arrow" /></button>
+              <button className="primary-button" disabled={chosenItems.length < 2 || savingOutfit} onClick={saveOutfit}>{savingOutfit ? "Saving privately…" : chosenItems.length < 2 ? `Choose ${2 - chosenItems.length} more piece${chosenItems.length === 0 ? "s" : ""}` : editingOutfitId ? "Save changes" : "Save this look"} <Icon name="arrow" /></button>
             </div>
             </>}
             {builderMode === "deck" && <div className="style-deck">
@@ -264,14 +289,14 @@ export default function Home() {
             <div className="looks-list">
               {savedOutfits.map((outfit) => (
                 <article className="saved-look" key={outfit.id}>
-                  <div className="saved-preview real-preview">
+                  <button className="saved-look-open" onClick={() => editOutfit(outfit)} aria-label={`Edit ${outfit.name}`}><div className="saved-preview real-preview">
                     {outfit.outfit_items.map(({ clothing_item_id }) => {
                       const item = savedItems.find((candidate) => candidate.id === clothing_item_id);
                       return item ? <img key={clothing_item_id} src={item.imageUrl} alt="" /> : null;
                     })}
                   </div>
-                  <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.outfit_items.length} pieces</p></div>
-                  <div className="look-actions"><button disabled={sharingId === outfit.id} onClick={() => shareOutfit(outfit)}>{sharingId === outfit.id ? "…" : "Share"}</button><button disabled={sharingId === outfit.id} onClick={() => revokeShare(outfit.id)}>Revoke</button></div>
+                  <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.outfit_items.length} pieces</p></div></button>
+                  <div className="look-actions"><button onClick={() => editOutfit(outfit)}>Edit</button><button disabled={sharingId === outfit.id} onClick={() => shareOutfit(outfit)}>{sharingId === outfit.id ? "…" : "Share"}</button><button disabled={sharingId === outfit.id} onClick={() => revokeShare(outfit.id)}>Revoke</button></div>
                 </article>
               ))}
             </div>
