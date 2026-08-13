@@ -33,6 +33,14 @@ Gate A is complete only when a pilot friend can independently join, install the 
 - Privacy-conscious monitoring and backup/restore drill
 - Invite the remaining friends after pilot fixes
 
+## Intelligence roadmap (after the pilot)
+
+1. Add useful garment metadata: color, material, season, warmth, formality, and style tags.
+2. Record preference signals without training a model yet: outfit kept/skipped, liked/disliked, edited, and worn.
+3. Ship occasion recommendations using structured filters plus a language model that translates prompts such as “casual fall dinner” into closet constraints.
+4. Add weather and carefully sourced trend context as optional inputs, never as reasons to recommend clothes the user does not own.
+5. Personalize ranking only after each user has enough real feedback; start with a simple scoring model before custom machine learning.
+
 ## Architecture decisions
 
 - Next.js App Router, strict TypeScript, Tailwind CSS, npm, and Node 20.19+
@@ -110,3 +118,4 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Added in-app iPhone installation guidance and a standalone-app manifest check for the two-friend pilot.
 - 2026-08-12: Removed the duplicate Layered template. Top + bottom retains optional outerwear, shoes, and accessories; Dress / one-piece remains the only alternate structure.
 - 2026-08-12: Saved looks can be reopened in the builder, renamed, restyled, and saved back to the existing outfit.
+- 2026-08-12: Saved-look editing became a focused mode: creation/deck controls and bottom navigation are hidden until the user saves or cancels, preventing the form from being covered.
