@@ -18,7 +18,7 @@ type SavedClosetItem = {
   storage_path: string;
   imageUrl: string;
 };
-type SavedOutfit = { id: string; name: string; created_at: string; outfit_items: { clothing_item_id: string; slot: Slot }[] };
+type SavedOutfit = { id: string; name: string; note: string; created_at: string; outfit_items: { clothing_item_id: string; slot: Slot }[] };
 
 const categories = ["All", "Tops", "Bottoms", "One-pieces", "Outerwear", "Shoes", "Accessories"] as const;
 
@@ -56,6 +56,7 @@ export default function Home() {
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const [editingOutfitId, setEditingOutfitId] = useState<string>();
   const [outfitName, setOutfitName] = useState("");
+  const [outfitNote, setOutfitNote] = useState("");
   const [savingOutfit, setSavingOutfit] = useState(false);
   const [outfitMessage, setOutfitMessage] = useState("");
   const [shareMessage, setShareMessage] = useState("");
@@ -77,7 +78,7 @@ export default function Home() {
   }, []);
 
   const loadSavedOutfits = useCallback(async () => {
-    const { data, error } = await createClient().from("outfits").select("id,name,created_at,outfit_items(clothing_item_id,slot)").order("created_at", { ascending: false });
+    const { data, error } = await createClient().from("outfits").select("id,name,note,created_at,outfit_items(clothing_item_id,slot)").order("created_at", { ascending: false });
     if (error) { setOutfitMessage("Your saved looks could not be loaded."); return; }
     setSavedOutfits((data ?? []) as SavedOutfit[]); setOutfitMessage("");
   }, []);
@@ -142,7 +143,7 @@ export default function Home() {
   }
 
   function resetBuilder() {
-    setLook({}); setOutfitName(""); setEditingOutfitId(undefined); setOutfitTemplate("separates"); setActiveSlot("top"); setOutfitMessage("");
+    setLook({}); setOutfitName(""); setOutfitNote(""); setEditingOutfitId(undefined); setOutfitTemplate("separates"); setActiveSlot("top"); setOutfitMessage("");
   }
 
   function cancelEdit() {
@@ -151,7 +152,7 @@ export default function Home() {
 
   function editOutfit(outfit: SavedOutfit) {
     const nextLook = Object.fromEntries(outfit.outfit_items.map(({ clothing_item_id, slot }) => [slot, clothing_item_id])) as Partial<Record<Slot, string>>;
-    setLook(nextLook); setOutfitName(outfit.name); setEditingOutfitId(outfit.id); setOutfitTemplate(nextLook["one-piece"] ? "one-piece" : "separates"); setActiveSlot(nextLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setOutfitMessage(""); setTab("create");
+    setLook(nextLook); setOutfitName(outfit.name); setOutfitNote(outfit.note); setEditingOutfitId(outfit.id); setOutfitTemplate(nextLook["one-piece"] ? "one-piece" : "separates"); setActiveSlot(nextLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setOutfitMessage(""); setTab("create");
   }
 
   async function saveOutfit() {
@@ -164,7 +165,7 @@ export default function Home() {
       if (!session) throw new Error("Your session expired. Sign in again and retry.");
       if (editingOutfitId) {
         outfitId = editingOutfitId;
-        const { error: outfitError } = await supabase.from("outfits").update({ name: outfitName.trim() }).eq("id", outfitId);
+        const { error: outfitError } = await supabase.from("outfits").update({ name: outfitName.trim(), note: outfitNote.trim() }).eq("id", outfitId);
         if (outfitError) throw outfitError;
         const rows = chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot }));
         const { error: itemsError } = await supabase.from("outfit_items").upsert(rows, { onConflict: "outfit_id,slot" });
@@ -176,7 +177,7 @@ export default function Home() {
           if (removeError) throw removeError;
         }
       } else {
-        const { data: outfit, error: outfitError } = await supabase.from("outfits").insert({ owner_id: session.user.id, name: outfitName.trim() }).select("id").single();
+        const { data: outfit, error: outfitError } = await supabase.from("outfits").insert({ owner_id: session.user.id, name: outfitName.trim(), note: outfitNote.trim() }).select("id").single();
         if (outfitError) throw outfitError;
         outfitId = outfit.id;
         const { error: itemsError } = await supabase.from("outfit_items").insert(chosenItems.map(({ slot, item }) => ({ outfit_id: outfitId, clothing_item_id: item.id, owner_id: session.user.id, slot })));
@@ -207,6 +208,15 @@ export default function Home() {
     const response = await fetch(`/api/outfits/${outfitId}/share`, { method: "DELETE" });
     const result = await response.json();
     setShareMessage(response.ok ? "Public link revoked." : result.error || "Could not revoke the link.");
+    setSharingId("");
+  }
+
+  async function deleteOutfit(outfit: SavedOutfit) {
+    if (!window.confirm(`Delete “${outfit.name}”? This cannot be undone.`)) return;
+    setSharingId(outfit.id); setOutfitMessage(""); setShareMessage(""); setShareUrl("");
+    const { error } = await createClient().from("outfits").delete().eq("id", outfit.id);
+    if (error) setOutfitMessage("This saved look could not be deleted. Try again.");
+    else { await loadSavedOutfits(); setShareMessage("Saved look deleted."); }
     setSharingId("");
   }
 
@@ -243,7 +253,8 @@ export default function Home() {
 
         {tab === "create" && (
           <section aria-labelledby="create-title">
-            <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && <button className="text-button" onClick={editingOutfitId ? cancelEdit : resetBuilder}>{editingOutfitId ? "Cancel edit" : "Start over"}</button>}</div>
+            {editingOutfitId && <button className="editor-back" onClick={cancelEdit}><span aria-hidden="true">←</span> Back to saved looks</button>}
+            <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && !editingOutfitId && <button className="text-button" onClick={resetBuilder}>Start over</button>}</div>
             {!editingOutfitId && <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>}
             {builderMode === "build" && <><div className="template-switcher" aria-label="Outfit template">
               {(["separates", "one-piece"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : "Dress / one-piece"}</button>)}
@@ -269,7 +280,7 @@ export default function Home() {
                 ))}
                 {choices.length === 0 && <div className="choice-empty"><strong>No {slotCategory[activeSlot]} yet.</strong><span>Add one from your closet first.</span><button onClick={() => { setTab("closet"); setPhotoLabOpen(true); }}>Add piece</button></div>}
               </div>
-              {chosenItems.length >= 2 && <label className="outfit-name">Look name<input value={outfitName} maxLength={60} onChange={(event) => setOutfitName(event.target.value)} placeholder="Tuesday layers" /></label>}
+              {chosenItems.length >= 2 && <div className="outfit-details"><label className="outfit-name">Look name<input value={outfitName} maxLength={60} onChange={(event) => setOutfitName(event.target.value)} placeholder="Tuesday layers" /></label><label className="outfit-note">Private note <span>optional</span><textarea value={outfitNote} maxLength={500} onChange={(event) => setOutfitNote(event.target.value)} placeholder="When to wear it, styling ideas…" /></label></div>}
               {outfitMessage && <p className="form-error" role="alert">{outfitMessage}</p>}
               <button className="primary-button" disabled={chosenItems.length < 2 || savingOutfit} onClick={saveOutfit}>{savingOutfit ? "Saving privately…" : chosenItems.length < 2 ? `Choose ${2 - chosenItems.length} more piece${chosenItems.length === 0 ? "s" : ""}` : editingOutfitId ? "Save changes" : "Save this look"} <Icon name="arrow" /></button>
             </div>
@@ -299,8 +310,8 @@ export default function Home() {
                       return item ? <img key={clothing_item_id} src={item.imageUrl} alt="" /> : null;
                     })}
                   </div>
-                  <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.outfit_items.length} pieces</p></div></button>
-                  <div className="look-actions"><button onClick={() => editOutfit(outfit)}>Edit</button><button disabled={sharingId === outfit.id} onClick={() => shareOutfit(outfit)}>{sharingId === outfit.id ? "…" : "Share"}</button><button disabled={sharingId === outfit.id} onClick={() => revokeShare(outfit.id)}>Revoke</button></div>
+                  <div className="saved-copy"><small>{new Intl.DateTimeFormat("en", { day: "2-digit", month: "short" }).format(new Date(outfit.created_at)).toUpperCase()}</small><h2>{outfit.name}</h2><p>{outfit.note || `${outfit.outfit_items.length} pieces`}</p></div></button>
+                  <div className="look-actions"><button onClick={() => editOutfit(outfit)}>Edit</button><button disabled={sharingId === outfit.id} onClick={() => shareOutfit(outfit)}>{sharingId === outfit.id ? "…" : "Share"}</button><button disabled={sharingId === outfit.id} onClick={() => revokeShare(outfit.id)}>Revoke</button><button className="delete-look" disabled={sharingId === outfit.id} onClick={() => deleteOutfit(outfit)}>Delete</button></div>
                 </article>
               ))}
             </div>

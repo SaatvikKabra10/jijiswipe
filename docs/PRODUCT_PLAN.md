@@ -28,7 +28,7 @@ Gate A is complete only when a pilot friend can independently join, install the 
 - Multi-photo local import queue: completed pieces become usable while remaining pieces process sequentially with the app open
 - Clothing archive and restore
 - Self-service account deletion
-- Forgotten-password recovery
+- Forgotten-password recovery — implemented; hosted email flow awaiting verification
 - Expanded accessibility, Android, and failure testing
 - Privacy-conscious monitoring and backup/restore drill
 - Invite the remaining friends after pilot fixes
@@ -68,7 +68,7 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 
 1. **Foundation and fake-data visual prototype — approved**
 2. **Local image-processing proof using ten varied garments — implemented; awaiting iPhone benchmark**
-3. **Accounts, migrations, private storage, and access-policy tests — authentication flow verified; policy tests remain**
+3. **Accounts, migrations, private storage, and access-policy tests — authentication flow verified; owner-isolation suite added**
 4. **Real upload-to-closet vertical slice — verified on iPhone**
 5. **Real outfit creation, local draft, saved outfits, templates, and Style Deck — verified on iPhone**
 6. **Secure, revocable public sharing — link view verified on iPhone**
@@ -122,3 +122,6 @@ Fixed slots: base top, mid-layer, outerwear, bottom, one-piece, shoes, accessory
 - 2026-08-12: Saved looks can be reopened in the builder, renamed, restyled, and saved back to the existing outfit.
 - 2026-08-12: Saved-look editing became a focused mode: creation/deck controls and bottom navigation are hidden until the user saves or cancels, preventing the form from being covered.
 - 2026-08-12: Raised the top-and-bottom composition within the outfit canvas so garment cutouts remain centered and bottoms are not clipped at the stage edge.
+- 2026-08-12: Added a full-size back control to saved-look editing and confirmed outfit deletion; deleting an outfit also cascades to its private pieces and public share record.
+- 2026-08-12: Exposed the existing private outfit-note field in create, edit, and saved-look views.
+- 2026-08-12: Fresh-database testing found implicit hosted Data API grants; added explicit least-privilege table grants while retaining owner-scoped RLS.

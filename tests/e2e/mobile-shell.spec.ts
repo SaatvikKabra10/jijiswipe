@@ -15,6 +15,13 @@ test("mobile shell has no serious automated accessibility violations", async ({ 
   expect(serious).toEqual([]);
 });
 
+test("returning users can reach password recovery", async ({ page }) => {
+  await page.goto("/sign-in");
+  await page.getByRole("link", { name: "Forgot your password?" }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+});
+
 test("install manifest describes a standalone portrait app", async ({ request }) => {
   const response = await request.get("/manifest.webmanifest");
   expect(response.ok()).toBeTruthy();

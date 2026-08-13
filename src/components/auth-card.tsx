@@ -5,7 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type Mode = "join" | "signin" | "password";
+type Mode = "join" | "signin" | "recover" | "password";
 
 export function AuthCard({ mode }: { mode: Mode }) {
   const router = useRouter();
@@ -26,6 +26,10 @@ export function AuthCard({ mode }: { mode: Mode }) {
         const { error: signInError } = await createClient().auth.signInWithPassword({ email: String(values.get("email")), password: String(values.get("password")) });
         if (signInError) throw signInError;
         router.replace("/"); router.refresh();
+      } else if (mode === "recover") {
+        const { error: recoveryError } = await createClient().auth.resetPasswordForEmail(String(values.get("email")), { redirectTo: `${window.location.origin}/auth/confirm?next=/auth/set-password` });
+        if (recoveryError) throw recoveryError;
+        setMessage("If that email belongs to an account, a secure reset link is on its way.");
       } else {
         const password = String(values.get("password"));
         if (password !== String(values.get("confirmPassword"))) throw new Error("Passwords do not match.");
@@ -42,7 +46,8 @@ export function AuthCard({ mode }: { mode: Mode }) {
   const content = {
     join: { eyebrow: "Private beta", title: "Join JijiSwipe", copy: "Use the code shared with you. We’ll email a secure link to set your password.", action: "Request invitation" },
     signin: { eyebrow: "Welcome back", title: "Open your closet", copy: "Sign in with the email and password you set from your invitation.", action: "Sign in" },
-    password: { eyebrow: "Invitation accepted", title: "Set your password", copy: "Use at least 10 characters. JijiSwipe and Supabase never store the readable password.", action: "Finish account" },
+    recover: { eyebrow: "Account recovery", title: "Reset your password", copy: "Enter your account email and we’ll send a secure, single-use reset link.", action: "Send reset link" },
+    password: { eyebrow: "Secure account", title: "Choose your password", copy: "Use at least 10 characters. JijiSwipe and Supabase never store the readable password.", action: "Save password" },
   }[mode];
 
   return <main className="auth-page"><section className="auth-card"><Link className="auth-brand" href="/">jiji<span>swipe</span></Link><p className="eyebrow">{content.eyebrow}</p><h1>{content.title}</h1><p className="auth-copy">{content.copy}</p><form onSubmit={submit}>
@@ -53,5 +58,5 @@ export function AuthCard({ mode }: { mode: Mode }) {
     {mode === "password" && <><label>New password<input name="password" type="password" autoComplete="new-password" minLength={10} required /></label><label>Confirm password<input name="confirmPassword" type="password" autoComplete="new-password" minLength={10} required /></label></>}
     {error && <p className="form-error" role="alert">{error}</p>}{message && <p className="form-success" role="status">{message}</p>}
     <button className="primary-button" disabled={busy}>{busy ? "Working…" : content.action}</button>
-  </form>{mode === "join" && <p className="auth-switch">Already joined? <Link href="/sign-in">Sign in</Link></p>}{mode === "signin" && <p className="auth-switch">Have an invite code? <Link href="/join">Join the beta</Link></p>}</section></main>;
+  </form>{mode === "join" && <p className="auth-switch">Already joined? <Link href="/sign-in">Sign in</Link></p>}{mode === "signin" && <><p className="auth-switch"><Link href="/forgot-password">Forgot your password?</Link></p><p className="auth-switch auth-switch-tight">Have an invite code? <Link href="/join">Join the beta</Link></p></>}{mode === "recover" && <p className="auth-switch">Remembered it? <Link href="/sign-in">Back to sign in</Link></p>}</section></main>;
 }
