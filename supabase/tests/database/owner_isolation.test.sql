@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(16);
 
 insert into auth.users (id, email, raw_user_meta_data) values
   ('11111111-1111-4111-8111-111111111111', 'owner-one@example.com', '{"display_name":"Owner One"}'),
@@ -58,6 +58,11 @@ select results_eq(
   $$delete from outfits where owner_id = '11111111-1111-4111-8111-111111111111' returning 1$$,
   $$select 1 where false$$,
   'owner two cannot delete owner one outfits'
+);
+select results_eq(
+  $$update clothing_items set primary_color = 'blue', formality = 'casual' where owner_id = '22222222-2222-4222-8222-222222222222' returning primary_color$$,
+  array['blue'::text, 'blue'::text],
+  'owner two can safely update recommendation metadata on their clothing'
 );
 
 reset role;

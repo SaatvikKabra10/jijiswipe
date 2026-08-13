@@ -4,13 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import Cropper, { type Area } from "react-easy-crop";
 import { heicTo, isHeic } from "heic-to/csp";
 import { createClient } from "@/lib/supabase/client";
+import { clothingCategories, clothingColors, formalities, garmentTypes, seasons, titleCase, warmthLevels, type ClothingCategory } from "@/lib/clothing-metadata";
 
 type Props = { open: boolean; onClose: () => void; onSaved: () => void | Promise<void> };
 type Stage = "guide" | "crop" | "processing" | "result" | "error";
 
 const MAX_BYTES = 25 * 1024 * 1024;
 const accepted = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
-const categories = ["tops", "bottoms", "one-pieces", "outerwear", "shoes", "accessories"] as const;
 
 function randomId() {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -81,13 +81,18 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
   const [message, setMessage] = useState("");
   const [modelReady, setModelReady] = useState(false);
   const [label, setLabel] = useState("");
-  const [category, setCategory] = useState<(typeof categories)[number]>("tops");
+  const [category, setCategory] = useState<ClothingCategory>("tops");
+  const [itemType, setItemType] = useState(garmentTypes.tops[0]);
+  const [primaryColor, setPrimaryColor] = useState<(typeof clothingColors)[number]>("black");
+  const [formality, setFormality] = useState<(typeof formalities)[number]>("casual");
+  const [warmth, setWarmth] = useState<(typeof warmthLevels)[number]>("midweight");
+  const [itemSeasons, setItemSeasons] = useState<(typeof seasons)[number][]>([]);
   const [saving, setSaving] = useState(false);
 
   const reset = useCallback(() => {
     if (source) URL.revokeObjectURL(source);
     if (result) URL.revokeObjectURL(result);
-    setSource(undefined); setResult(undefined); setResultBlob(undefined); setStage("guide"); setProgress(0); setRotation(0); setZoom(1); setCrop({ x: 0, y: 0 }); setLabel(""); setCategory("tops"); setSaving(false); setMessage("");
+    setSource(undefined); setResult(undefined); setResultBlob(undefined); setStage("guide"); setProgress(0); setRotation(0); setZoom(1); setCrop({ x: 0, y: 0 }); setLabel(""); setCategory("tops"); setItemType(garmentTypes.tops[0]); setPrimaryColor("black"); setFormality("casual"); setWarmth("midweight"); setItemSeasons([]); setSaving(false); setMessage("");
   }, [source, result]);
 
   useEffect(() => () => { if (source) URL.revokeObjectURL(source); if (result) URL.revokeObjectURL(result); }, [source, result]);
@@ -143,7 +148,7 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
       path = `${user.id}/${randomId()}.${extension}`;
       const { error: uploadError } = await supabase.storage.from("clothing").upload(path, resultBlob, { contentType, upsert: false });
       if (uploadError) throw uploadError;
-      const { error: insertError } = await supabase.from("clothing_items").insert({ owner_id: user.id, label: label.trim(), category, storage_path: path });
+      const { error: insertError } = await supabase.from("clothing_items").insert({ owner_id: user.id, label: label.trim(), category, storage_path: path, item_type: itemType, primary_color: primaryColor, formality, warmth, seasons: itemSeasons, metadata_source: "manual", metadata_confirmed_at: new Date().toISOString() });
       if (insertError) { await supabase.storage.from("clothing").remove([path]); throw insertError; }
       await onSaved(); reset(); onClose();
     } catch (error) {
@@ -158,7 +163,7 @@ export function PhotoLab({ open, onClose, onSaved }: Props) {
         {stage === "guide" && <div className="lab-body guide"><p className="eyebrow">Better photo, better cutout</p><h2>Keep it clean.</h2><div className="photo-guide"><div className="guide-shirt">✦</div></div><ul><li>Use one item and a plain background</li><li>Frame the full piece from straight above</li><li>Use bright, even light with minimal shadows</li></ul><label className="primary-button">Choose photo<input type="file" accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif" onChange={(event) => choose(event.target.files?.[0])} /></label><small>{modelReady ? "Cutout engine ready · photo stays on this device." : "Preparing cutout engine · photo stays on this device."}</small></div>}
         {stage === "crop" && source && <div className="lab-body crop-stage"><div className="crop-area"><Cropper image={source} crop={crop} zoom={zoom} rotation={rotation} aspect={4 / 5} onCropChange={setCrop} onZoomChange={setZoom} onRotationChange={setRotation} onCropComplete={(_percent, pixels) => setArea(pixels)} /></div><div className="crop-controls"><label>Zoom<input type="range" min="1" max="3" step=".05" value={zoom} onChange={(e) => setZoom(Number(e.target.value))} /></label><button onClick={() => setRotation((rotation + 90) % 360)}>Rotate 90°</button><button className="primary-button" onClick={process}>Remove background</button></div></div>}
         {stage === "processing" && <div className="lab-body processing"><div className="spinner"/><p className="eyebrow">Working on your phone</p><h2>Cutting it out…</h2><div className="progress"><i style={{ width: `${progress}%` }}/></div><p>{progress < 10 ? "Downloading the model may take a minute the first time." : `${progress}% complete`}</p></div>}
-        {stage === "result" && result && <div className="lab-body result"><p className="eyebrow">Preview</p><h2>Save this piece.</h2><div className="result-image">{/* A temporary local blob cannot use Next Image optimization. */}<img src={result} alt="Background-removed clothing preview" /></div><div className="item-fields"><label>Item name<input value={label} maxLength={60} onChange={(event) => setLabel(event.target.value)} placeholder="Blue boxy tee" /></label><label>Category<select value={category} onChange={(event) => setCategory(event.target.value as typeof category)}>{categories.map((value) => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}</select></label></div>{message && <p className="form-error" role="alert">{message}</p>}<button className="primary-button" disabled={saving} onClick={save}>{saving ? "Saving privately…" : "Save to closet"}</button><button className="secondary-button" disabled={saving} onClick={() => setStage("crop")}>Adjust and retry</button><button className="text-button" disabled={saving} onClick={reset}>Choose another photo</button></div>}
+        {stage === "result" && result && <div className="lab-body result"><p className="eyebrow">Preview</p><h2>Save this piece.</h2><div className="result-image">{/* A temporary local blob cannot use Next Image optimization. */}<img src={result} alt="Background-removed clothing preview" /></div><div className="item-fields"><label>Item name<input value={label} maxLength={60} onChange={(event) => setLabel(event.target.value)} placeholder="Blue boxy tee" /></label><label>Category<select value={category} onChange={(event) => { const next = event.target.value as ClothingCategory; setCategory(next); setItemType(garmentTypes[next][0]); }}>{clothingCategories.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label></div><details className="metadata-details" open><summary>Recommendation details <span>helps JijiSwipe style it</span></summary><div className="metadata-grid"><label>Garment type<select value={itemType} onChange={(event) => setItemType(event.target.value)}>{garmentTypes[category].map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label><label>Color<select value={primaryColor} onChange={(event) => setPrimaryColor(event.target.value as typeof primaryColor)}>{clothingColors.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label><label>Dress code<select value={formality} onChange={(event) => setFormality(event.target.value as typeof formality)}>{formalities.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label><label>Weight<select value={warmth} onChange={(event) => setWarmth(event.target.value as typeof warmth)}>{warmthLevels.map((value) => <option key={value} value={value}>{titleCase(value)}</option>)}</select></label></div><fieldset className="season-picker"><legend>Good for</legend>{seasons.map((value) => <button type="button" className={itemSeasons.includes(value) ? "selected" : ""} key={value} onClick={() => setItemSeasons((current) => current.includes(value) ? current.filter((season) => season !== value) : [...current, value])}>{titleCase(value)}</button>)}</fieldset></details>{message && <p className="form-error" role="alert">{message}</p>}<button className="primary-button" disabled={saving} onClick={save}>{saving ? "Saving privately…" : "Save to closet"}</button><button className="secondary-button" disabled={saving} onClick={() => setStage("crop")}>Adjust and retry</button><button className="text-button" disabled={saving} onClick={reset}>Choose another photo</button></div>}
         {stage === "error" && <div className="lab-body processing"><p className="eyebrow">Couldn’t process</p><h2>Try another photo.</h2><p>{message}</p><button className="primary-button" onClick={reset}>Back to photo tips</button></div>}
       </section>
     </div>

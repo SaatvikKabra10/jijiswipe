@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PhotoLab } from "@/components/photo-lab";
 import { ItemDetailSheet } from "@/components/item-detail-sheet";
 import { ProfileSheet } from "@/components/profile-sheet";
+import type { ClothingCategory, ClothingMetadata } from "@/lib/clothing-metadata";
 import { createClient } from "@/lib/supabase/client";
 
 type Tab = "closet" | "create" | "outfits";
@@ -11,10 +12,10 @@ type Slot = "top" | "bottom" | "one-piece" | "outerwear" | "shoes" | "accessory"
 type OutfitTemplate = "separates" | "one-piece";
 type BuilderMode = "build" | "deck";
 
-type SavedClosetItem = {
+type SavedClosetItem = ClothingMetadata & {
   id: string;
   label: string;
-  category: "tops" | "bottoms" | "one-pieces" | "outerwear" | "shoes" | "accessories";
+  category: ClothingCategory;
   storage_path: string;
   imageUrl: string;
 };
@@ -68,7 +69,7 @@ export default function Home() {
 
   const loadSavedItems = useCallback(async () => {
     const supabase = createClient();
-    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("clothing_items").select("id,label,category,storage_path,item_type,primary_color,formality,warmth,seasons").order("created_at", { ascending: false });
     if (error) { setClosetMessage("Your saved pieces could not be loaded."); return; }
     const withUrls = await Promise.all((data ?? []).map(async (item) => {
       const { data: signed } = await supabase.storage.from("clothing").createSignedUrl(item.storage_path, 3600);

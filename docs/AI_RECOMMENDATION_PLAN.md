@@ -62,7 +62,7 @@ Do not scrape Pinterest, proxy its images, or store Pins returned by an API. If 
 
 ## Delivery phases
 
-1. **Metadata foundation:** schema, editable garment details, controlled tag vocabulary, and backfill existing items.
+1. **Metadata foundation:** schema, editable garment details, controlled tag vocabulary, and backfill existing items. Schema and editing UI implemented; confirm the mobile flow and fill existing items before bulk AI analysis.
 2. **Rules engine:** occasion presets and valid outfit generation with no paid AI dependency.
 3. **Prompt recommendations:** language model parses free text and ranks rule-generated candidates; strict output validation and per-user limits.
 4. **Preference learning:** rerank using keeps, skips, edits, likes, and worn history; no custom training until enough data exists.
@@ -73,10 +73,10 @@ Do not scrape Pinterest, proxy its images, or store Pins returned by an API. If 
 - Analyze each garment once, then reuse confirmed metadata.
 - Send compact structured candidate data rather than every full-resolution image on each request.
 - Cache identical requests briefly and cap suggestions per user.
-- Put all model calls behind a server route with authentication, validation, timeouts, and a monthly spending limit.
+- Put all model calls behind a server route with authentication, validation, timeouts, usage logging, per-user quotas, and an application-side monthly cutoff.
 - Keep the rules-only recommender available when an AI provider is unavailable or the budget is exhausted.
 - Never train on a user's photos or preferences without explicit consent.
 
 ## Gate to begin
 
-Start Phase 1 after the two-friend pilot has no blocker or data-loss bug. The recommendation UI can then be built incrementally without destabilizing the closet and outfit foundation.
+Phase 1 was approved after owner-side V1 checks passed. Before enabling paid calls, benchmark ten representative garments, record actual token usage, and verify the cutoff and rules-only fallback.
