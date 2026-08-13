@@ -145,6 +145,10 @@ export default function Home() {
     setLook({}); setOutfitName(""); setEditingOutfitId(undefined); setOutfitTemplate("separates"); setActiveSlot("top"); setOutfitMessage("");
   }
 
+  function cancelEdit() {
+    resetBuilder(); setTab("outfits");
+  }
+
   function editOutfit(outfit: SavedOutfit) {
     const nextLook = Object.fromEntries(outfit.outfit_items.map(({ clothing_item_id, slot }) => [slot, clothing_item_id])) as Partial<Record<Slot, string>>;
     setLook(nextLook); setOutfitName(outfit.name); setEditingOutfitId(outfit.id); setOutfitTemplate(nextLook["one-piece"] ? "one-piece" : "separates"); setActiveSlot(nextLook["one-piece"] ? "one-piece" : "top"); setBuilderMode("build"); setOutfitMessage(""); setTab("create");
@@ -207,9 +211,9 @@ export default function Home() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${editingOutfitId ? "editing-shell" : ""}`}>
       <header className="topbar">
-        <button className="wordmark" onClick={() => setTab("closet")} aria-label="JijiSwipe home">jiji<span>swipe</span></button>
+        <button className="wordmark" onClick={() => { if (editingOutfitId) resetBuilder(); setTab("closet"); }} aria-label="JijiSwipe home">jiji<span>swipe</span></button>
         <button className="profile-button" onClick={() => setProfileOpen(true)} aria-label="Open profile">{avatarUrl ? <img src={avatarUrl} alt=""/> : <Icon name="user" />}</button>
       </header>
 
@@ -239,8 +243,8 @@ export default function Home() {
 
         {tab === "create" && (
           <section aria-labelledby="create-title">
-            <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && <button className="text-button" onClick={resetBuilder}>{editingOutfitId ? "Cancel edit" : "Start over"}</button>}</div>
-            <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>
+            <div className="create-heading"><div><p className="eyebrow">{editingOutfitId ? "Edit saved look" : "Build a look"}</p><h1 id="create-title">{editingOutfitId ? "Refine your fit" : "Swipe to style"}</h1></div>{builderMode === "build" && <button className="text-button" onClick={editingOutfitId ? cancelEdit : resetBuilder}>{editingOutfitId ? "Cancel edit" : "Start over"}</button>}</div>
+            {!editingOutfitId && <div className="mode-switcher" aria-label="Creation mode"><button className={builderMode === "build" ? "active" : ""} onClick={() => setBuilderMode("build")}>Build</button><button className={builderMode === "deck" ? "active" : ""} onClick={() => setBuilderMode("deck")}>Style Deck</button></div>}
             {builderMode === "build" && <><div className="template-switcher" aria-label="Outfit template">
               {(["separates", "one-piece"] as const).map((template) => <button key={template} className={outfitTemplate === template ? "active" : ""} onClick={() => chooseTemplate(template)}>{template === "separates" ? "Top + bottom" : "Dress / one-piece"}</button>)}
             </div>
@@ -304,11 +308,11 @@ export default function Home() {
         )}
       </div>
 
-      <nav className="bottom-nav" aria-label="Main navigation">
+      {!editingOutfitId && <nav className="bottom-nav" aria-label="Main navigation">
         <button className={tab === "closet" ? "active" : ""} onClick={() => setTab("closet")}><span className="nav-icon"><Icon name="closet" /></span><span>Closet</span></button>
         <button className={tab === "create" ? "active" : ""} onClick={() => setTab("create")}><span className="nav-icon"><Icon name="spark" /></span><span>Create</span></button>
         <button className={tab === "outfits" ? "active" : ""} onClick={() => setTab("outfits")}><span className="nav-icon"><Icon name="looks" /></span><span>Outfits</span></button>
-      </nav>
+      </nav>}
       <PhotoLab open={photoLabOpen} onClose={() => setPhotoLabOpen(false)} onSaved={loadSavedItems} />
       {selectedItem && <ItemDetailSheet item={selectedItem} onClose={() => setSelectedItem(undefined)} onChanged={async () => { await loadSavedItems(); await loadSavedOutfits(); }} />}
       <ProfileSheet open={profileOpen} onClose={() => setProfileOpen(false)} onAvatar={setAvatarUrl} />
